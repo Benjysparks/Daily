@@ -11,6 +11,9 @@ import (
 	"github.com/robfig/cron/v3"
 	"log"
 	mail "github.com/xhit/go-simple-mail/v2"
+	_ "github.com/lib/pq"
+	"database/sql"
+	"workspace/github.com/Benjysparks/daily/internal/database"
 )
 
 type ForecastStruct struct {
@@ -226,6 +229,9 @@ var (
 	premTableAPIKey 	string
 )
 
+type apiConfig struct {
+	db			   *database.Queries
+}
 
 
 var weatherHtmlBody string
@@ -355,7 +361,12 @@ func getCatImage() error {
 		return err
 	}
 
-	catHTML = catImage[0].URL
+	catHTML = fmt.Sprintf(`<h3 style="color: white">Here's a cat!</h3>
+    <img src="%v" alt="Image" style="border: 1px solid #ccc;
+    border-radius: 8px; width: 100%%; max-width: 400px; height: auto;
+    display: block; margin: 12px auto;">`, catImage[0].URL)
+
+		
 	return nil
 }
 
@@ -382,7 +393,7 @@ func getWeather() error {
 		return err
 	}
 
-	weatherHtmlBody = `<div style="overflow-x: auto; white-space: nowrap; padding: 6px;">`
+	weatherHtmlBody = `<h3 style="color: white">Daily Weather</h3><div style="overflow-x: auto; white-space: nowrap; padding: 6px;">`
 
 	for _, hour := range forecast.Forecast.Forecastday[0].Hour[:24] {
 		card := fmt.Sprintf(`
@@ -453,7 +464,7 @@ func getNews() error {
 	}
 
 
-	newsHTML = `<div style="max-width: 375px; height: 600px; overflow-y: auto; padding: 8px; border: 1px solid #ccc; margin: 0 auto;">`
+	newsHTML = `<h3 style="color: white">Top news</h3><div style="max-width: 375px; height: 600px; overflow-y: auto; padding: 8px; border: 1px solid #ccc; margin: 0 auto;">`
 
 	for _, article := range newsArticles.Articles {
     t, err := time.Parse(time.RFC3339, article.PublishedAt)
@@ -527,14 +538,10 @@ func emailer() {
 		<body bgcolor="#f0f0f0" style="margin:0; padding:0;">
 		<h1 style="color: yellow">Good Morning!</h1>
 		<h2 style="color: white">Todays date is %v</h2>
-		<h3 style="color: white">Daily Weather</h3>
+		%v	
 		%v
-		<h3 style="color: white">Top news</h3>
 		%v
-		<h3 style="color: white">Here's a cat!</h3>
-		<img src="%v" alt="Image" style="border: 1px solid #ccc; border-radius: 8px; width: 100%%; max-width: 400px; height: auto; display: block; margin: 12px auto;">
 		%v
-
 	`, dateStringFunc(), weatherHtmlBody, newsHTML, catHTML, premTableHTML)
 	email.SetBody(mail.TextHTML, body)
 
@@ -609,8 +616,40 @@ func BatteryCheck() {
 
 func main() {
 
-	BatteryCheck()
-	fmt.Println("battery checked")
+
+	const filepathRoot = "."
+	const port = "8080"
+
+	mux := http.NewServeMux()
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
+
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Print("Cound not open connection to database")
+	}
+	dbQueries := database.New(db)
+
+	apiCfg := apiConfig{
+		db:				dbQueries,
+	}
+
+	
+
+	mux.Handle("/", http.FileServer(http.Dir(filepathRoot + "/html")))
+	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("GET /api/allusers", apiCfg.handlerShowAllUser)
+
+
+	go func() {
+		log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
+		log.Fatal(srv.ListenAndServe())
+	}()
+
 	c := cron.New()
 
 	c.AddFunc("20 18 * * *", createEmail)

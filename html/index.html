@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>User Registration</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 40px;
+        background-color: #f4f4f4;
+      }
+      form {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 400px;
+        margin: auto;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      label {
+        display: block;
+        margin-top: 15px;
+      }
+      input[type="text"],
+      input[type="email"],
+      input[type="password"] {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 20px;
+        padding: 10px;
+        width: 100%;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+      }
+      .success {
+        color: green;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <form id="userForm">
+      <h2>Create Account</h2>
+      <label
+        >Name:
+        <input type="text" id="name" required />
+      </label>
+
+      <label
+        >Email:
+        <input type="email" id="email" required />
+      </label>
+
+      <label
+        >Password:
+        <input type="password" id="password" required />
+      </label>
+
+      <button type="submit">Register</button>
+
+      <div class="error" id="error"></div>
+      <div class="success" id="success"></div>
+    </form>
+
+    <script>
+      const form = document.getElementById("userForm");
+      const errorDiv = document.getElementById("error");
+      const successDiv = document.getElementById("success");
+
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        errorDiv.textContent = "";
+        successDiv.textContent = "";
+
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        // Simple email regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!name || !email || !password) {
+          errorDiv.textContent = "All fields are required.";
+          return;
+        }
+
+        if (!emailRegex.test(email)) {
+          errorDiv.textContent = "Please enter a valid email address.";
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/users", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, email, password }),
+          });
+
+          if (response.ok) {
+            successDiv.textContent = "User registered successfully!";
+            form.reset();
+          } else {
+            const data = await response.json();
+            errorDiv.textContent = data.error || "Registration failed.";
+          }
+        } catch (err) {
+          errorDiv.textContent = "Error connecting to server.";
+        }
+      });
+    </script>
+  </body>
+</html>
