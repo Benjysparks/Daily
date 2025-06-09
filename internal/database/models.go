@@ -5,6 +5,7 @@
 package database
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,4 +18,9 @@ type User struct {
 	Email     string
 	Pword     string
 	FullName  string
+}
+
+type UserPreference struct {
+	UserID      uuid.UUID
+	Preferences json.RawMessage
 }

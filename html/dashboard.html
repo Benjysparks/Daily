@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+
+      .card {
+        border: 1px solid #ccc;
+        padding: 1em;
+        margin: 0.5em;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 0.2s ease;
+        }
+      .card.selected {
+        background-color: #c8f7c5; /* light green */
+        }
+
+
+      header {
+        background-color: #2c3e50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+      }
+
+      .container {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .card h2 {
+        margin-top: 0;
+        font-size: 20px;
+        color: #333;
+      }
+
+      .card p {
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Welcome, <span id="username">User</span>!</h1>
+    </header>
+
+    <div id="cards">
+        <div class="card" data-preference="news">News</div>
+        <div class="card" data-preference="sports">Sports</div>
+        <div class="card" data-preference="music">Music</div>
+    </div>
+
+    </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const token = localStorage.getItem("token");
+
+    // Redirect to login if token is missing
+    if (!token) {
+      window.location.href = "/login.html";
+      return;
+    }
+
+    // Debug: Check if token is present
+    console.log("Token being sent:", token);
+
+    const cards = document.querySelectorAll(".card");
+    const selectedPrefs = new Set();
+
+    cards.forEach(card => {
+      card.addEventListener("click", () => {
+        const pref = card.dataset.preference;
+
+        // Toggle visual selection and track selected preferences
+        if (card.classList.toggle("selected")) {
+          selectedPrefs.add(pref);
+        } else {
+          selectedPrefs.delete(pref);
+        }
+
+        // Send updated preferences to backend
+        fetch("/api/preferences", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ preferences: Array.from(selectedPrefs) })
+        })
+        .then(res => {
+          if (!res.ok) {
+            console.error("Failed to save preferences");
+          }
+        })
+        .catch(err => {
+          console.error("Network error:", err);
+        });
+      });
+    });
+  });
+</script>
+
+
+  </body>
+</html>

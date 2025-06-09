@@ -233,6 +233,12 @@ type apiConfig struct {
 	db			   *database.Queries
 }
 
+var (
+    jwtSecret   = []byte(os.Getenv("JWT_SECRET"))
+    tokenExpiry = time.Hour * 24
+)
+
+
 
 var weatherHtmlBody string
 var newsHTML		string 
@@ -616,7 +622,6 @@ func BatteryCheck() {
 
 func main() {
 
-
 	const filepathRoot = "."
 	const port = "8080"
 
@@ -643,6 +648,19 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir(filepathRoot + "/html")))
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	mux.HandleFunc("GET /api/allusers", apiCfg.handlerShowAllUser)
+	mux.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
+    switch r.Method {
+    case http.MethodGet:
+        http.ServeFile(w, r, filepathRoot+"/html/login/login.html")
+    case http.MethodPost:
+        apiCfg.handlerLogin(w, r) // or jwtMiddleware(apiCfg.handlerLogin)(w, r) if needed
+    default:
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+    }
+	})
+	mux.HandleFunc("POST /api/preferences", apiCfg.handlerUpdatePreferences)
+	mux.HandleFunc("GET /api/showpreferences", apiCfg.handlerShowUserPreferences)
+
 
 
 	go func() {
