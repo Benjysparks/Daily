@@ -10,7 +10,7 @@ import (
 )
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, email, pword, full_name FROM users
+SELECT id, created_at, updated_at, email, pword, full_name, user_hours, user_minutes, jwt_token FROM users
 WHERE email = $1
 `
 
@@ -24,6 +24,9 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.Pword,
 		&i.FullName,
+		&i.UserHours,
+		&i.UserMinutes,
+		&i.JwtToken,
 	)
 	return i, err
 }

@@ -9,3 +9,5 @@ sql:
         overrides:
           - db_type: "jsonb"
             go_type: "encoding/json.RawMessage"
+          - db_type: "jsonb NULL"
+            go_type: "*encoding/json.RawMessage"

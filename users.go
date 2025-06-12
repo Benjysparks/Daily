@@ -12,6 +12,7 @@ import (
     "database/sql"
     "fmt"
     "context"
+	"log"
 )
 
 type User struct {
@@ -20,16 +21,20 @@ type User struct {
 		UpdatedAt       time.Time `json:"updated_at"`
 		Email           string    `json:"email"`
 		Username        string    `json:"username"`
-
+		Hours        	int32  `json:"Hours"`
+		Minutes         int32   `json:"Minutes"`
 	}
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 
     type parameters struct {
-        Email string `json:"email"`
-        Password string `json:"password"`
-        Name string `json:"name`
-    }   
+    Email    string `json:"email"`
+    Password string `json:"password"`
+    Name     string `json:"name"`
+    Hours    int32    `json:"hourNumber"`
+    Minutes  int32    `json:"minuteNumber"`
+	}
+   
 
     decoder := json.NewDecoder(r.Body)  // Fix: use r.Body instead of r.Email
     params := parameters{}
@@ -38,16 +43,42 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
         respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
         return
     }
+	fmt.Println(params.Hours)
+	fmt.Println(params.Minutes)
 
 	user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
-		Email:    params.Email,
-		Pword:    params.Password,
-		FullName: params.Name,
+    Email:     params.Email,
+    Pword:     params.Password,
+    FullName:  params.Name,
+    UserHours: params.Hours,
+    UserMinutes: params.Minutes,
 	})
+
+	err = cfg.scheduleUserEmail(params.Email, params.Hours, params.Minutes)
+		if err != nil {
+			log.Printf("Failed to schedule email for %s: %v", user.Email, err)
+		}
+
 	if err != nil{
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
         return
 	}
+
+	// func (cfg *apiConfig) scheduleUserEmail(email string, hour, minute int) error {
+	// // Validate hour and minute
+	// if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+	// 	return fmt.Errorf("invalid hour or minute")
+	// }
+
+	// // Format cron spec: "30 8 * * *"
+	// spec := fmt.Sprintf("%d %d * * *", minute, hour)
+
+	// // Add function to cron
+	// return cfg.cron.AddFunc(spec, func() {
+	// 	cfg.emailerPrefs(email)
+	// })
+	// }
+
 
 	respondWithJSON(w, http.StatusCreated, User{
 			ID:			user.ID,
@@ -56,6 +87,13 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 			Email:		user.Email,
 			Username:	user.FullName,
 	})
+}
+
+func (cfg *apiConfig) handlerClearUsers(w http.ResponseWriter, r *http.Request) {
+	err := cfg.db.ClearUserTable(r.Context())
+	if err != nil {
+		fmt.Println("error")
+	}
 }
 
 func (cfg *apiConfig) handlerShowAllUser(w http.ResponseWriter, r *http.Request) {
@@ -73,6 +111,8 @@ func (cfg *apiConfig) handlerShowAllUser(w http.ResponseWriter, r *http.Request)
             UpdatedAt: user.UpdatedAt,
             Email:     user.Email,
             Username:  user.FullName,
+			Hours:	   user.UserHours,
+			Minutes:   user.UserMinutes,
         }
     }
 
@@ -160,6 +200,7 @@ func jwtMiddleware(next http.HandlerFunc) http.HandlerFunc {
 }
 
 
+
 func getUserIDFromContextOrToken(r *http.Request) (uuid.UUID, error) {
 	
     if userIDVal := r.Context().Value("userID"); userIDVal != nil {
@@ -200,6 +241,22 @@ func getUserIDFromContextOrToken(r *http.Request) (uuid.UUID, error) {
 
 }
 
+func (cfg *apiConfig) handlerSendInfoToFront(w http.ResponseWriter, r *http.Request) {
+	var user database.GetUserByIDRow
+	userId, err := getUserIDFromContextOrToken(r)
+	if err != nil {
+		fmt.Println(err)
+	}
+	user, err = cfg.db.GetUserByID(r.Context(), userId)
+	if err != nil {
+		fmt.Println(err)
+	}
+	respondWithJSON(w, http.StatusOK, database.User{
+		ID: 		user.ID,
+		FullName:	user.FullName,
+		Email:		user.Email,
+	})
+}
 
 func (cfg *apiConfig) handlerUpdatePreferences(w http.ResponseWriter, r *http.Request) {
     if r.Method != http.MethodPost {
@@ -260,12 +317,14 @@ func getUserPreferences(db *sql.DB, userID int) ([]string, error) {
 }
 
 func (cfg *apiConfig) handlerShowUserPreferences(w http.ResponseWriter, r *http.Request) {
-    userPrefs := []database.ShowUserPreferencesByEmailRow{}
-    users, _ := cfg.db.ShowUserPreferencesByEmail(r.Context())
+    userPrefs := []database.ShowAllUserPreferencesRow{}
+    users, _ := cfg.db.ShowAllUserPreferences(r.Context())
     for _, user := range users {
-        userPrefs = append(userPrefs, database.ShowUserPreferencesByEmailRow{
+        userPrefs = append(userPrefs, database.ShowAllUserPreferencesRow{
             ID:          user.ID,
             Email:       user.Email,
+			UserHours:	 user.UserHours,
+			UserMinutes: user.UserMinutes,
 	        Preferences: user.Preferences,  
         })
     }

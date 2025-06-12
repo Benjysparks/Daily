@@ -1,0 +1,3 @@
+GET http://localhost:8080/api/userinfo
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NDk3OTczNTUsInVzZXJfaWQiOiI2MDdiNTg1ZS02MWQwLTRjOTItYjQ3MS0yZDgyMzUyODRjODQifQ.z4t3LzgW-_rwJJKvF5cg5s599likR_EUMus8enSbApE

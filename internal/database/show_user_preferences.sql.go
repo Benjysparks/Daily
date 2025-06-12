@@ -12,28 +12,36 @@ import (
 	"github.com/sqlc-dev/pqtype"
 )
 
-const showUserPreferencesByEmail = `-- name: ShowUserPreferencesByEmail :many
-SELECT u.id, u.email, up.preferences
+const showAllUserPreferences = `-- name: ShowAllUserPreferences :many
+SELECT u.id, u.email, u.user_hours, u.user_minutes, up.preferences
 FROM users u
 LEFT JOIN user_preferences up ON u.id = up.user_id
 `
 
-type ShowUserPreferencesByEmailRow struct {
+type ShowAllUserPreferencesRow struct {
 	ID          uuid.UUID
 	Email       string
+	UserHours   int32
+	UserMinutes int32
 	Preferences pqtype.NullRawMessage
 }
 
-func (q *Queries) ShowUserPreferencesByEmail(ctx context.Context) ([]ShowUserPreferencesByEmailRow, error) {
-	rows, err := q.db.QueryContext(ctx, showUserPreferencesByEmail)
+func (q *Queries) ShowAllUserPreferences(ctx context.Context) ([]ShowAllUserPreferencesRow, error) {
+	rows, err := q.db.QueryContext(ctx, showAllUserPreferences)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ShowUserPreferencesByEmailRow
+	var items []ShowAllUserPreferencesRow
 	for rows.Next() {
-		var i ShowUserPreferencesByEmailRow
-		if err := rows.Scan(&i.ID, &i.Email, &i.Preferences); err != nil {
+		var i ShowAllUserPreferencesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.UserHours,
+			&i.UserMinutes,
+			&i.Preferences,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

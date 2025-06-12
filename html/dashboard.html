@@ -12,18 +12,9 @@
         padding: 0;
       }
 
-      .card {
-        border: 1px solid #ccc;
-        padding: 1em;
-        margin: 0.5em;
-        cursor: pointer;
-        border-radius: 8px;
-        transition: background-color 0.2s ease;
-        }
       .card.selected {
         background-color: #c8f7c5; /* light green */
-        }
-
+      }
 
       header {
         background-color: #2c3e50;
@@ -39,21 +30,58 @@
         gap: 20px;
       }
 
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+
+      @media (min-width: 768px) {
+        .card-grid {
+          grid-template-columns: repeat(6, 1fr);
+        }
+      }
+
       .card {
-        background: white;
-        padding: 20px;
+        background-color: white;
         border-radius: 12px;
+        overflow: hidden;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
       }
 
-      .card h2 {
-        margin-top: 0;
-        font-size: 20px;
-        color: #333;
+      .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
       }
 
-      .card p {
+      .card img {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+      }
+
+      .card-content {
+        padding: 10px;
+      }
+
+      .card-title {
+        font-size: 1rem;
+        font-weight: bold;
+        margin: 0 0 5px;
+      }
+
+      .card-description {
+        font-size: 0.9rem;
         color: #555;
+        margin: 0;
+      }
+
+      .card img {
+        width: 100%;
+        height: 150px;
+        object-fit: contain;
+        background-color: #eee;
       }
     </style>
   </head>
@@ -63,62 +91,93 @@
     </header>
 
     <div id="cards">
-        <div class="card" data-preference="news">News</div>
-        <div class="card" data-preference="sports">Sports</div>
-        <div class="card" data-preference="music">Music</div>
+      <div class="card" data-preference="news">News</div>
+      <div class="card" data-preference="sports">Sports</div>
+      <div class="card" data-preference="music">Weather</div>
+      <div class="card" data-preference="music">Cat Pictures</div>
     </div>
 
+    <div class="card-grid">
+      <div class="card" data-preference="news">
+        <img src="./images/NewsIcon.jpg" alt="Module Image" />
+        <div class="card-content">
+          <div class="card-title">News</div>
+          <p class="card-description">Top 10 news stories.</p>
+        </div>
+      </div>
+
+      <div class="card" data-preference="sports">
+        <img src="./images/PremierLeague.jpg" alt="Module Image" />
+        <div class="card-content">
+          <div class="card-title">Premier League</div>
+          <p class="card-description">Shows the premier league table.</p>
+        </div>
+      </div>
+
+      <div class="card" data-preference="weather">
+        <img src="./images/Weather.jpg" alt="Module Image" />
+        <div class="card-content">
+          <div class="card-title">Weather</div>
+          <p class="card-description">Hourly weather forecast for the day.</p>
+        </div>
+      </div>
+
+      <div class="card" data-preference="cats">
+        <img src="./images/Cats.jpg" alt="Module Image" />
+        <div class="card-content">
+          <div class="card-title">Cats</div>
+          <p class="card-description">Random daily picture of gif of cats.</p>
+        </div>
+      </div>
     </div>
 
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const token = localStorage.getItem("token");
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("token");
 
-    // Redirect to login if token is missing
-    if (!token) {
-      window.location.href = "/login.html";
-      return;
-    }
-
-    // Debug: Check if token is present
-    console.log("Token being sent:", token);
-
-    const cards = document.querySelectorAll(".card");
-    const selectedPrefs = new Set();
-
-    cards.forEach(card => {
-      card.addEventListener("click", () => {
-        const pref = card.dataset.preference;
-
-        // Toggle visual selection and track selected preferences
-        if (card.classList.toggle("selected")) {
-          selectedPrefs.add(pref);
-        } else {
-          selectedPrefs.delete(pref);
+        // Redirect to login if token is missing
+        if (!token) {
+          window.location.href = "/login/login.html";
+          return;
         }
 
-        // Send updated preferences to backend
-        fetch("/api/preferences", {
-          method: "POST",
-          headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ preferences: Array.from(selectedPrefs) })
-        })
-        .then(res => {
-          if (!res.ok) {
-            console.error("Failed to save preferences");
-          }
-        })
-        .catch(err => {
-          console.error("Network error:", err);
+        // Debug: Check if token is present
+        console.log("Token being sent:", token);
+
+        const cards = document.querySelectorAll(".card");
+        const selectedPrefs = new Set();
+
+        cards.forEach((card) => {
+          card.addEventListener("click", () => {
+            const pref = card.dataset.preference;
+
+            // Toggle visual selection and track selected preferences
+            if (card.classList.toggle("selected")) {
+              selectedPrefs.add(pref);
+            } else {
+              selectedPrefs.delete(pref);
+            }
+
+            // Send updated preferences to backend
+            fetch("/api/preferences", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ preferences: Array.from(selectedPrefs) }),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  console.error("Failed to save preferences");
+                }
+              })
+              .catch((err) => {
+                console.error("Network error:", err);
+              });
+          });
         });
       });
-    });
-  });
-</script>
-
-
+    </script>
   </body>
 </html>

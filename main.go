@@ -14,6 +14,8 @@ import (
 	_ "github.com/lib/pq"
 	"database/sql"
 	"workspace/github.com/Benjysparks/daily/internal/database"
+	"context"
+	"strings"
 )
 
 type ForecastStruct struct {
@@ -219,6 +221,10 @@ type PremTable struct {
 	} `json:"standings"`
 }
 
+type Preferences struct {
+		RawMessage []string `json:"RawMessage"`
+	} 
+
 
 var (
 	weatherAPIKey 		string
@@ -231,6 +237,7 @@ var (
 
 type apiConfig struct {
 	db			   *database.Queries
+	cron 		   *cron.Cron
 }
 
 var (
@@ -258,13 +265,23 @@ func init() {
 	premTableAPIKey = os.Getenv("PremTableAPIKey")
 }
 
-func getPremTable() error {
+var moduleFunctions = map[string]func() string {
+  "news": 		getNews,    // returns HTML string
+  "weather": 	getWeather,
+  "sports": 	getPremTable,
+  "cats":		getCatImage,
+  // etc.
+}
+
+
+func getPremTable() string {
 	url := "https://api.football-data.org/v4/competitions/PL/standings"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println("Request creation failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 
 	req.Header.Add("X-Auth-Token", premTableAPIKey)
@@ -272,20 +289,21 @@ func getPremTable() error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Request failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API request failed: %s", resp.Status)
+		fmt.Println(err)
+		return ""
 	}
 
 	var premTable PremTable
 	err = json.NewDecoder(resp.Body).Decode(&premTable)
 	if err != nil {
-		fmt.Println("JSON decode failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 
 	premTableHTML = `<div style="max-width: 100%; overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #ffffff; font-family: Arial, sans-serif; font-size: 13px; color: #333;">
@@ -339,32 +357,33 @@ func getPremTable() error {
 	}
 
 	premTableHTML += `</tbody></table></div>`
+	fmt.Println("working")
 
 
-	return nil
+	return premTableHTML
 }
 
 
-func getCatImage() error {
+func getCatImage() string {
 	url := fmt.Sprintf("https://api.thecatapi.com/v1/images/search?size=med&format=json&api_key=%v", catAPIKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("HTTP request failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Bad status code:", resp.Status)
-		return fmt.Errorf("bad status: %s", resp.Status)
+		fmt.Println(err)
+		return ""
 	}
 
 	var catImage CatStruct
 	err = json.NewDecoder(resp.Body).Decode(&catImage)
 	if err != nil {
-		fmt.Println("JSON decode failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 
 	catHTML = fmt.Sprintf(`<h3 style="color: white">Here's a cat!</h3>
@@ -373,30 +392,30 @@ func getCatImage() error {
     display: block; margin: 12px auto;">`, catImage[0].URL)
 
 		
-	return nil
+	return catHTML
 }
 
-func getWeather() error {
+func getWeather() string {
 	
 	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%v&q=tn27%%209fj&days=1&aqi=no&alerts=no", weatherAPIKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("HTTP request failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Bad status code:", resp.Status)
-		return fmt.Errorf("bad status: %s", resp.Status)
+		fmt.Println(err)
+		return ""
 	}
 
 	var forecast ForecastStruct
 	err = json.NewDecoder(resp.Body).Decode(&forecast)
 	if err != nil {
-		fmt.Println("JSON decode failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 
 	weatherHtmlBody = `<h3 style="color: white">Daily Weather</h3><div style="overflow-x: auto; white-space: nowrap; padding: 6px;">`
@@ -418,7 +437,7 @@ func getWeather() error {
 	weatherHtmlBody += `</div>`
 
 
-	return nil
+	return weatherHtmlBody
 }
 
 func makeNewsCard(title, publishDate, imageURL, description, url string) string {
@@ -447,26 +466,26 @@ func makeNewsCard(title, publishDate, imageURL, description, url string) string 
     `, url, title, publishDate, imageURL, description)
 }
 
-func getNews() error {
+func getNews() string {
 	url := fmt.Sprintf("https://gnews.io/api/v4/search?q=example&lang=en&country=us&max=10&apikey=%v", newsAPIKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
-		fmt.Println("HTTP request failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Bad status News code:", resp.Status)
-		return fmt.Errorf("bad News status: %s", resp.Status)
+		return ""
 	}
 
 	var newsArticles NewsArticles
 	err = json.NewDecoder(resp.Body).Decode(&newsArticles)
 	if err != nil {
-		fmt.Println("JSON decode failed:", err)
-		return err
+		fmt.Println(err)
+		return ""
 	}
 
 
@@ -488,7 +507,7 @@ func getNews() error {
 
 
 		newsHTML += `</div>`
-		return nil
+		return newsHTML
 }
 
 func ordinalSuffix(day int) string {
@@ -517,7 +536,7 @@ func dateStringFunc() string {
 	return fmt.Sprintf("%s %s of %s %d", weekday, dayWithSuffix, month, year)
 }
 
-func emailer() {
+func emailer(modulePreferences string) {
 	
 	server := mail.NewSMTPClient()
 	server.Host = "smtp.gmail.com"
@@ -545,10 +564,7 @@ func emailer() {
 		<h1 style="color: yellow">Good Morning!</h1>
 		<h2 style="color: white">Todays date is %v</h2>
 		%v	
-		%v
-		%v
-		%v
-	`, dateStringFunc(), weatherHtmlBody, newsHTML, catHTML, premTableHTML)
+	`, dateStringFunc(), modulePreferences)
 	email.SetBody(mail.TextHTML, body)
 
 	if email.Error != nil {
@@ -562,6 +578,45 @@ func emailer() {
 	} else {
 		fmt.Println("✅ Email sent successfully!")
 	}
+}
+
+func UnpackUserPreferences(row database.ShowUserPreferencesByEmailRow) ([]string) {
+
+    if !row.Preferences.Valid {
+        return []string{}
+    }
+
+    var prefs []string
+    err := json.Unmarshal(row.Preferences.RawMessage, &prefs)
+    if err != nil {
+        return []string{}
+    }
+	return prefs
+	
+}
+
+
+func (cfg *apiConfig) emailerPrefs(email string) {
+
+	user, _ := cfg.db.ShowUserPreferencesByEmail(context.Background(), email)
+
+	userPrefs := UnpackUserPreferences(user)
+
+	var combinedHTML strings.Builder
+
+	for _, moduleName := range userPrefs {
+		fmt.Println(moduleName)
+		fn, ok := moduleFunctions[moduleName]
+		if !ok {
+			continue
+		}
+		htmlPart := fn()        // call the function to get HTML
+		combinedHTML.WriteString(htmlPart) // add it to the builder
+	}
+
+	emailBody := combinedHTML.String()
+
+	emailer(emailBody)
 }
 
 func scheduleDailyTask(hour, minute int) {
@@ -583,30 +638,6 @@ func scheduleDailyTask(hour, minute int) {
 	}
 }
 
-func createEmail() {
-	err := getWeather()
-	if err != nil {
-		fmt.Println("Error getting weather:", err)
-		return
-	}
-	err = getNews()
-	if err != nil {
-		fmt.Println("Error getting News:", err)
-		return
-	}
-	err = getCatImage()
-	if err != nil {
-		fmt.Println("Error getting cats:", err)
-		return
-	}
-	err = getPremTable()
-	if err != nil {
-		fmt.Println("Error getting football:", err)
-		return
-	}
-	emailer()
-}
-
 func BatteryCheck() {
     batteries, err := battery.GetAll()
     if err != nil {
@@ -619,8 +650,31 @@ func BatteryCheck() {
     }
 }
 
+func (cfg *apiConfig) scheduleUserEmail(email string, hour, minute int32) error {
+	fmt.Println("function called")
+	// Validate hour and minute
+	if hour < 0 || hour > 23 || minute < 0 || minute > 59 {
+		return fmt.Errorf("invalid hour or minute")
+	}
+
+	// Format cron spec: "30 8 * * *"
+	spec := fmt.Sprintf("%d %d * * *", minute, hour)
+	fmt.Printf("%v: %v", email, spec)
+
+	// Add function to cron
+	_, err := cfg.cron.AddFunc(spec, func() {
+	cfg.emailerPrefs(email)
+	})
+		return err
+
+}
+
 
 func main() {
+
+	
+
+	
 
 	const filepathRoot = "."
 	const port = "8080"
@@ -638,12 +692,14 @@ func main() {
 		log.Print("Cound not open connection to database")
 	}
 	dbQueries := database.New(db)
+	c := cron.New()
 
 	apiCfg := apiConfig{
 		db:				dbQueries,
+		cron: 			c,
 	}
-
 	
+	// apiCfg.emailerPrefs("Benjy@hotmail.com")
 
 	mux.Handle("/", http.FileServer(http.Dir(filepathRoot + "/html")))
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
@@ -660,6 +716,8 @@ func main() {
 	})
 	mux.HandleFunc("POST /api/preferences", apiCfg.handlerUpdatePreferences)
 	mux.HandleFunc("GET /api/showpreferences", apiCfg.handlerShowUserPreferences)
+	mux.HandleFunc("GET /api/userinfo", apiCfg.handlerSendInfoToFront)
+	mux.HandleFunc("GET /api/clearuser", apiCfg.handlerClearUsers)
 
 
 
@@ -668,10 +726,8 @@ func main() {
 		log.Fatal(srv.ListenAndServe())
 	}()
 
-	c := cron.New()
-
-	c.AddFunc("20 18 * * *", createEmail)
-	c.AddFunc("@hourly", BatteryCheck)
+	// c.AddFunc("20 18 * * *", createEmail(variable))
+	// c.AddFunc("@hourly", BatteryCheck)
 
 	c.Start()
 	select {}

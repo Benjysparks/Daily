@@ -12,12 +12,15 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Email     string
-	Pword     string
-	FullName  string
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Email       string
+	Pword       string
+	FullName    string
+	UserHours   int32
+	UserMinutes int32
+	JwtToken    string
 }
 
 type UserPreference struct {

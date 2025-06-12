@@ -10,7 +10,7 @@ import (
 )
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, created_at, updated_at, email, pword, full_name FROM users
+SELECT id, created_at, updated_at, email, pword, full_name, user_hours, user_minutes, jwt_token FROM users
 ORDER BY email
 `
 
@@ -30,6 +30,9 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Email,
 			&i.Pword,
 			&i.FullName,
+			&i.UserHours,
+			&i.UserMinutes,
+			&i.JwtToken,
 		); err != nil {
 			return nil, err
 		}

@@ -29,6 +29,13 @@
         margin-top: 5px;
         box-sizing: border-box;
       }
+      input[type="hour"],
+      input[type="minute"] {
+        width: 45%;
+        padding: 8px;
+        margin-top: 5px;
+        box-sizing: border-box;
+      }
       button {
         margin-top: 20px;
         padding: 10px;
@@ -66,7 +73,19 @@
         >Password:
         <input type="password" id="password" required />
       </label>
+      <div display: flex; gap: 10px;>
 
+         <label
+         >When do you want your email? 
+          <input type="hour" id="hour" required placeholder="00"/>
+
+        :
+
+
+          <input type="minute" id="minute" required placeholder="00"/>
+        </label> 
+      </div>
+      
       <button type="submit">Register</button>
 
       <div class="error" id="error"></div>
@@ -86,11 +105,13 @@
         const name = document.getElementById("name").value.trim();
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value.trim();
+        const hour = document.getElementById("hour").value.trim();
+        const minute = document.getElementById("minute").value.trim();
 
         // Simple email regex
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (!name || !email || !password) {
+        if (!name || !email || !password || !hour || !minute) {
           errorDiv.textContent = "All fields are required.";
           return;
         }
@@ -100,18 +121,33 @@
           return;
         }
 
+        console.log("Hour:", hour, "Minute:", minute);
+
+        const hourNumber = parseInt(hour, 10);
+        if (!Number.isInteger(hourNumber) || hourNumber < 1 || hourNumber > 23) {
+          errorDiv.textContent = "Invalid time format.";
+          return;
+        }
+
+        const minuteNumber = parseInt(minute, 10);
+        if (!Number.isInteger(minuteNumber) || minuteNumber < 0 || minuteNumber > 59) {
+          errorDiv.textContent = "Invalid time format.";
+          return;
+        }
+
         try {
           const response = await fetch("/api/users", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ name, email, password }),
+            body: JSON.stringify({ name, email, password, hourNumber, minuteNumber }),
           });
 
           if (response.ok) {
             successDiv.textContent = "User registered successfully!";
             form.reset();
+            window.location.href = "/login.html";
           } else {
             const data = await response.json();
             errorDiv.textContent = data.error || "Registration failed.";
