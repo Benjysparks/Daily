@@ -147,7 +147,7 @@
           if (response.ok) {
             successDiv.textContent = "User registered successfully!";
             form.reset();
-            window.location.href = "/login.html";
+            window.location.href = "/api/login";
           } else {
             const data = await response.json();
             errorDiv.textContent = data.error || "Registration failed.";

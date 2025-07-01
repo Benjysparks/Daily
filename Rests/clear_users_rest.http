@@ -1,2 +1,2 @@
-GET http://localhost:8080/api/clearuser
+GET http://localhost:8000/api/clearuser
 Content-Type: application/json

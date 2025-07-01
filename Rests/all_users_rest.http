@@ -1,2 +1,2 @@
-GET http://localhost:8080/api/allusers
+GET http://localhost:8000/api/allusers
 Content-Type: application/json

@@ -90,12 +90,6 @@
       <h1>Welcome, <span id="username">User</span>!</h1>
     </header>
 
-    <div id="cards">
-      <div class="card" data-preference="news">News</div>
-      <div class="card" data-preference="sports">Sports</div>
-      <div class="card" data-preference="music">Weather</div>
-      <div class="card" data-preference="music">Cat Pictures</div>
-    </div>
 
     <div class="card-grid">
       <div class="card" data-preference="news">
@@ -109,8 +103,24 @@
       <div class="card" data-preference="sports">
         <img src="./images/PremierLeague.jpg" alt="Module Image" />
         <div class="card-content">
-          <div class="card-title">Premier League</div>
-          <p class="card-description">Shows the premier league table.</p>
+          <div class="card-title">League Table</div>
+          <p class="card-description">Shows the chosen league table.</p>
+          <select class="sports-dropdown">
+            <option value="">Select your leauge</option>
+            <option value="pl">Premier League</option>
+            <option value="elc">Championship</option>
+            <option value="el1">League One</option>
+            <option value="el2">League Two</option>
+            <option value="pd">La Liga</option>
+            <option value="sa">Serie A</option>
+            <option value="bl1">Bundesliga</option>
+            <option value="fl1">Ligue 1</option>
+            <option value="ded">Eredivisie</option>
+            <option value="ppl">Primeira Liga</option>
+            <option value="bsa">Serie A (Brazil)</option>
+            <option value="argpd">Liga Profesional (Argentina)</option>
+            <option value="mls">Major League Soccer</option>
+          </select>
         </div>
       </div>
 
@@ -132,52 +142,77 @@
     </div>
 
     <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const token = localStorage.getItem("token");
+        document.addEventListener("DOMContentLoaded", () => {
+          const token = localStorage.getItem("token");
 
-        // Redirect to login if token is missing
-        if (!token) {
-          window.location.href = "/login/login.html";
-          return;
+          if (!token) {
+            window.location.href = "/login.html";
+            return;
+          }
+
+          const cards = document.querySelectorAll(".card");
+          const selectedPrefs = new Set();
+          const extraPrefsData = {}; // For values like selected team
+
+          cards.forEach((card) => {
+  const pref = card.dataset.preference;
+
+  // Special handling for sports card
+  const isSports = pref === "sports";
+  const dropdown = isSports ? card.querySelector(".sports-dropdown") : null;
+
+  // Prevent card click when interacting with dropdown
+  if (dropdown) {
+    dropdown.addEventListener("click", (e) => e.stopPropagation());
+    dropdown.addEventListener("change", (e) => e.stopPropagation());
+  }
+
+  card.addEventListener("click", () => {
+    // For sports card, ensure a team is selected before proceeding
+    if (isSports && (!dropdown || !dropdown.value)) {
+      alert("Please select a team before selecting the sports card.");
+      return;
+    }
+
+    const selected = card.classList.toggle("selected");
+
+    if (selected) {
+      selectedPrefs.add(pref);
+      if (isSports) {
+        extraPrefsData[pref] = dropdown.value;
+      }
+    } else {
+      selectedPrefs.delete(pref);
+      if (isSports) {
+        delete extraPrefsData[pref];
+      }
+    }
+
+    const payload = {
+      preferences: Array.from(selectedPrefs),
+      extraData: extraPrefsData,
+    };
+
+    fetch("/api/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          console.error("Failed to save preferences");
         }
-
-        // Debug: Check if token is present
-        console.log("Token being sent:", token);
-
-        const cards = document.querySelectorAll(".card");
-        const selectedPrefs = new Set();
-
-        cards.forEach((card) => {
-          card.addEventListener("click", () => {
-            const pref = card.dataset.preference;
-
-            // Toggle visual selection and track selected preferences
-            if (card.classList.toggle("selected")) {
-              selectedPrefs.add(pref);
-            } else {
-              selectedPrefs.delete(pref);
-            }
-
-            // Send updated preferences to backend
-            fetch("/api/preferences", {
-              method: "POST",
-              headers: {
-                Authorization: "Bearer " + token,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ preferences: Array.from(selectedPrefs) }),
-            })
-              .then((res) => {
-                if (!res.ok) {
-                  console.error("Failed to save preferences");
-                }
-              })
-              .catch((err) => {
-                console.error("Network error:", err);
-              });
-          });
-        });
+      })
+      .catch((err) => {
+        console.error("Network error:", err);
       });
-    </script>
+  });
+});
+        });
+      </script>
+
   </body>
 </html>
