@@ -83,13 +83,21 @@
         object-fit: contain;
         background-color: #eee;
       }
+
+      .card-input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
     <header>
       <h1>Welcome, <span id="username">User</span>!</h1>
     </header>
-
 
     <div class="card-grid">
       <div class="card" data-preference="news">
@@ -107,19 +115,19 @@
           <p class="card-description">Shows the chosen league table.</p>
           <select class="sports-dropdown">
             <option value="">Select your leauge</option>
-            <option value="pl">Premier League</option>
-            <option value="elc">Championship</option>
-            <option value="el1">League One</option>
-            <option value="el2">League Two</option>
-            <option value="pd">La Liga</option>
-            <option value="sa">Serie A</option>
-            <option value="bl1">Bundesliga</option>
-            <option value="fl1">Ligue 1</option>
-            <option value="ded">Eredivisie</option>
-            <option value="ppl">Primeira Liga</option>
-            <option value="bsa">Serie A (Brazil)</option>
-            <option value="argpd">Liga Profesional (Argentina)</option>
-            <option value="mls">Major League Soccer</option>
+            <option value="PL">Premier League</option>
+            <option value="ELC">Championship</option>
+            <option value="EL1">League One</option>
+            <option value="EL2">League Two</option>
+            <option value="PD">La Liga</option>
+            <option value="SA">Serie A</option>
+            <option value="BL1">Bundesliga</option>
+            <option value="FL1">Ligue 1</option>
+            <option value="DED">Eredivisie</option>
+            <option value="PPL">Primeira Liga</option>
+            <option value="BSA">Serie A (Brazil)</option>
+            <option value="ARGPD">Liga Profesional (Argentina)</option>
+            <option value="MLS">Major League Soccer</option>
           </select>
         </div>
       </div>
@@ -129,6 +137,11 @@
         <div class="card-content">
           <div class="card-title">Weather</div>
           <p class="card-description">Hourly weather forecast for the day.</p>
+          <input
+            type="text"
+            class="card-input"
+            placeholder="Enter city or location"
+          />
         </div>
       </div>
 
@@ -142,77 +155,104 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-          const token = localStorage.getItem("token");
+      document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("token");
 
-          if (!token) {
-            window.location.href = "/login.html";
-            return;
+        if (!token) {
+          window.location.href = "/login.html";
+          return;
+        }
+
+        const cards = document.querySelectorAll(".card");
+
+        cards.forEach((card) => {
+          const pref = card.dataset.preference;
+          const isSports = pref === "sports";
+          const isWeather = pref === "weather";
+
+          const dropdown = isSports
+            ? card.querySelector(".sports-dropdown")
+            : null;
+          const input = isWeather ? card.querySelector(".card-input") : null;
+
+          // Prevent click events from bubbling up from inputs
+          if (dropdown) {
+            dropdown.addEventListener("click", (e) => e.stopPropagation());
+            dropdown.addEventListener("change", (e) => e.stopPropagation());
           }
 
-          const cards = document.querySelectorAll(".card");
-          const selectedPrefs = new Set();
-          const extraPrefsData = {}; // For values like selected team
+          if (input) {
+            input.addEventListener("click", (e) => e.stopPropagation());
+            input.addEventListener("input", (e) => e.stopPropagation());
+          }
 
-          cards.forEach((card) => {
-  const pref = card.dataset.preference;
+          card.addEventListener("click", () => {
+            if (isSports) {
+              if (!dropdown || !dropdown.value) {
+                alert("Please select a team before selecting the sports card.");
+                return;
+              }
+            }
 
-  // Special handling for sports card
-  const isSports = pref === "sports";
-  const dropdown = isSports ? card.querySelector(".sports-dropdown") : null;
+            if (isWeather) {
+              const city = input.value.trim();
+              if (!city) {
+                alert(
+                  "Please enter a city or location before selecting the weather card."
+                );
+                return;
+              }
+            }
 
-  // Prevent card click when interacting with dropdown
-  if (dropdown) {
-    dropdown.addEventListener("click", (e) => e.stopPropagation());
-    dropdown.addEventListener("change", (e) => e.stopPropagation());
-  }
+            // Toggle selection state
+            const selected = card.classList.toggle("selected");
 
-  card.addEventListener("click", () => {
-    // For sports card, ensure a team is selected before proceeding
-    if (isSports && (!dropdown || !dropdown.value)) {
-      alert("Please select a team before selecting the sports card.");
-      return;
-    }
+            // Rebuild ordered lists
+            const preferences = [];
+            const extraData = [];
 
-    const selected = card.classList.toggle("selected");
+            cards.forEach((c) => {
+              if (!c.classList.contains("selected")) return;
 
-    if (selected) {
-      selectedPrefs.add(pref);
-      if (isSports) {
-        extraPrefsData[pref] = dropdown.value;
-      }
-    } else {
-      selectedPrefs.delete(pref);
-      if (isSports) {
-        delete extraPrefsData[pref];
-      }
-    }
+              const p = c.dataset.preference;
+              preferences.push(p);
 
-    const payload = {
-      preferences: Array.from(selectedPrefs),
-      extraData: extraPrefsData,
-    };
+              if (p === "sports") {
+                const val = c.querySelector(".sports-dropdown")?.value || "";
+                extraData.push(val);
+              } else if (p === "weather") {
+                const val = c.querySelector(".card-input")?.value.trim() || "";
+                extraData.push(val);
+              } else {
+                extraData.push(""); // Default for other modules
+              }
+            });
 
-    fetch("/api/preferences", {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          console.error("Failed to save preferences");
-        }
-      })
-      .catch((err) => {
-        console.error("Network error:", err);
-      });
-  });
-});
+            // Final payload
+            const payload = {
+              preferences,
+              extraData,
+            };
+
+            fetch("/api/preferences", {
+              method: "POST",
+              headers: {
+                Authorization: "Bearer " + token,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  console.error("Failed to save preferences");
+                }
+              })
+              .catch((err) => {
+                console.error("Network error:", err);
+              });
+          });
         });
-      </script>
-
+      });
+    </script>
   </body>
 </html>

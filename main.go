@@ -150,43 +150,60 @@ func emailer(modulePreferences string) {
 	}
 }
 
-func UnpackUserPreferences(row database.ShowUserPreferencesByEmailRow) []string {
+func UnpackUserPreferences(row database.ShowUserPreferencesByEmailRow) ([]string, []string) {
+    var prefs []string
+    var extraData []string
 
-	if !row.Preferences.Valid {
-		return []string{}
-	}
+    if row.Preferences.Valid {
+        if err := json.Unmarshal(row.Preferences.RawMessage, &prefs); err != nil {
+            prefs = []string{}
+        }
+    }
 
-	var prefs []string
-	err := json.Unmarshal(row.Preferences.RawMessage, &prefs)
-	if err != nil {
-		return []string{}
-	}
-	return prefs
+    if row.PreferenceVariables.Valid {
+        if err := json.Unmarshal(row.PreferenceVariables.RawMessage, &extraData); err != nil {
+            extraData = []string{}
+        }
+    }
 
+    return prefs, extraData
 }
+
 
 func (cfg *apiConfig) emailerPrefs(email string) {
+    user, err := cfg.db.ShowUserPreferencesByEmail(context.Background(), email)
+    if err != nil {
+        // handle error, maybe log and return early
+        return
+    }
 
-	user, _ := cfg.db.ShowUserPreferencesByEmail(context.Background(), email)
+    userPrefs, extraData := UnpackUserPreferences(user)
 
-	userPrefs := UnpackUserPreferences(user)
+    var combinedHTML strings.Builder
 
-	var combinedHTML strings.Builder
+    for i, moduleName := range userPrefs {
+        fn, ok := moduleFunctions[moduleName]
+        if !ok {
+            continue
+        }
 
-	for _, moduleName := range userPrefs {
-		fmt.Println(moduleName)
-		fn, ok := moduleFunctions[moduleName]
-		if !ok {
-			continue
-		}
-		htmlPart := fn()                   // call the function to get HTML
-		combinedHTML.WriteString(htmlPart) // add it to the builder
-	}
+        // Defensive: check if extraData exists for this index
+        var arg string
+        if i < len(extraData) {
+            arg = extraData[i]
+        } else {
+            arg = "" // or some default
+        }
 
-	emailBody := combinedHTML.String()
+        htmlPart := fn(arg)                 // pass the corresponding extraData
+        combinedHTML.WriteString(htmlPart) // add it to the builder
+    }
 
-	emailer(emailBody)
+    emailBody := combinedHTML.String()
+
+    emailer(emailBody)
 }
+
 
 func BatteryCheck() {
 	batteries, err := battery.GetAll()

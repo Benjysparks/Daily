@@ -13,18 +13,19 @@ import (
 )
 
 const savePreferences = `-- name: SavePreferences :exec
-INSERT INTO user_preferences (user_id, preferences)
-VALUES ($1, $2)
+INSERT INTO user_preferences (user_id, preferences, preference_variables)
+VALUES ($1, $2, $3)
 ON CONFLICT (user_id) DO UPDATE
 SET preferences = EXCLUDED.preferences
 `
 
 type SavePreferencesParams struct {
-	UserID      uuid.UUID
-	Preferences json.RawMessage
+	UserID              uuid.UUID
+	Preferences         json.RawMessage
+	PreferenceVariables json.RawMessage
 }
 
 func (q *Queries) SavePreferences(ctx context.Context, arg SavePreferencesParams) error {
-	_, err := q.db.ExecContext(ctx, savePreferences, arg.UserID, arg.Preferences)
+	_, err := q.db.ExecContext(ctx, savePreferences, arg.UserID, arg.Preferences, arg.PreferenceVariables)
 	return err
 }

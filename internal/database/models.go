@@ -24,6 +24,7 @@ type User struct {
 }
 
 type UserPreference struct {
-	UserID      uuid.UUID
-	Preferences json.RawMessage
+	UserID              uuid.UUID
+	Preferences         json.RawMessage
+	PreferenceVariables json.RawMessage
 }

@@ -13,21 +13,27 @@ import (
 )
 
 const showUserPreferencesByEmail = `-- name: ShowUserPreferencesByEmail :one
-SELECT u.id, u.email, up.preferences
+SELECT u.id, u.email, up.preferences, up.preference_variables
 FROM users u
 LEFT JOIN user_preferences up ON u.id = up.user_id
 WHERE u.email = $1
 `
 
 type ShowUserPreferencesByEmailRow struct {
-	ID          uuid.UUID
-	Email       string
-	Preferences pqtype.NullRawMessage
+	ID                  uuid.UUID
+	Email               string
+	Preferences         pqtype.NullRawMessage
+	PreferenceVariables pqtype.NullRawMessage
 }
 
 func (q *Queries) ShowUserPreferencesByEmail(ctx context.Context, email string) (ShowUserPreferencesByEmailRow, error) {
 	row := q.db.QueryRowContext(ctx, showUserPreferencesByEmail, email)
 	var i ShowUserPreferencesByEmailRow
-	err := row.Scan(&i.ID, &i.Email, &i.Preferences)
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Preferences,
+		&i.PreferenceVariables,
+	)
 	return i, err
 }

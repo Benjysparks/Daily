@@ -266,6 +266,7 @@ func (cfg *apiConfig) handlerUpdatePreferences(w http.ResponseWriter, r *http.Re
 
     var req struct {
         Preferences []string `json:"preferences"`
+        ExtraData   []string `json:"extraData"`
     }
 
     err := json.NewDecoder(r.Body).Decode(&req)
@@ -286,9 +287,16 @@ func (cfg *apiConfig) handlerUpdatePreferences(w http.ResponseWriter, r *http.Re
         return
     }
 
+    extraDataJSON, err := json.Marshal(req.ExtraData)
+    if err != nil {
+        http.Error(w, "Failed to marshal extra data", http.StatusInternalServerError)
+        return
+    }
+
     err = cfg.db.SavePreferences(r.Context(), database.SavePreferencesParams{
-        UserID:      userID,
-        Preferences: prefsJSON,
+        UserID:              userID,
+        Preferences:         prefsJSON,
+        PreferenceVariables: extraDataJSON,
     })
     if err != nil {
         http.Error(w, "Failed to update preferences", http.StatusInternalServerError)
@@ -299,21 +307,30 @@ func (cfg *apiConfig) handlerUpdatePreferences(w http.ResponseWriter, r *http.Re
 }
 
 
-func getUserPreferences(db *sql.DB, userID int) ([]string, error) {
+func getUserPreferences(db *sql.DB, userID int) ([]string, []string, error) {
     var prefsJSON string
-    query := `SELECT preferences FROM user_preferences WHERE user_id = ?`
+    var extraDataJSON string
+    query := `SELECT preferences, preference_variables FROM user_preferences WHERE user_id = $1`
 
-    err := db.QueryRow(query, userID).Scan(&prefsJSON)
+    err := db.QueryRow(query, userID).Scan(&prefsJSON, &extraDataJSON)
     if err != nil {
         if err == sql.ErrNoRows {
-            return []string{}, nil 
+            return []string{}, []string{}, nil
         }
-        return nil, err
+        return nil, nil, err
     }
 
     var preferences []string
-    err = json.Unmarshal([]byte(prefsJSON), &preferences)
-    return preferences, err
+    if err := json.Unmarshal([]byte(prefsJSON), &preferences); err != nil {
+        return nil, nil, err
+    }
+
+    var extraData []string
+    if err := json.Unmarshal([]byte(extraDataJSON), &extraData); err != nil {
+        return nil, nil, err
+    }
+
+    return preferences, extraData, nil
 }
 
 func (cfg *apiConfig) handlerShowUserPreferences(w http.ResponseWriter, r *http.Request) {

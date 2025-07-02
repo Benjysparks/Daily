@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"strings"
 )
 
 type ForecastStruct struct {
@@ -215,7 +216,7 @@ var newsHTML string
 var catHTML string
 var premTableHTML string
 
-var moduleFunctions = map[string]func() string{
+var moduleFunctions = map[string]func(string) string{
 	"news":    getNews, // returns HTML string
 	"weather": getWeather,
 	"sports":  getPremTable,
@@ -223,41 +224,45 @@ var moduleFunctions = map[string]func() string{
 	// etc.
 }
 
-func getPremTable() string {
-	url := "https://api.football-data.org/v4/competitions/PL/standings"
+func getPremTable(league string) string {
+    url := fmt.Sprintf("https://api.football-data.org/v4/competitions/%v/standings", league)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		fmt.Println("Request creation failed:", err)
-		fmt.Println(err)
-		return ""
-	}
+    req, err := http.NewRequest("GET", url, nil)
+    if err != nil {
+        fmt.Println("Request creation failed:", err)
+        return ""
+    }
 
-	req.Header.Add("X-Auth-Token", premTableAPIKey)
+    req.Header.Add("X-Auth-Token", premTableAPIKey)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
-	defer resp.Body.Close()
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        fmt.Println(err)
+        return ""
+    }
+    defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println(err)
-		return ""
-	}
+    if resp.StatusCode != http.StatusOK {
+        fmt.Println("Bad status code:", resp.StatusCode)
+        return ""
+    }
 
-	var premTable PremTable
-	err = json.NewDecoder(resp.Body).Decode(&premTable)
-	if err != nil {
-		fmt.Println(err)
-		return ""
-	}
+    var premTable PremTable
+    err = json.NewDecoder(resp.Body).Decode(&premTable)
+    if err != nil {
+        fmt.Println(err)
+        return ""
+    }
+	fmt.Println(premTable.Competition.Name)
 
-	premTableHTML = `<div style="max-width: 100%; overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #ffffff; font-family: Arial, sans-serif; font-size: 13px; color: #333;">
-  	<h1 style="font-size: 18px; text-align: center;">Premier League Table</h1>
-	<table cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; min-width: 600px; width: 100%;">
+    // Start building HTML with league name
+    var premTableHTML strings.Builder
+
+    premTableHTML.WriteString(fmt.Sprintf(`
+<div style="max-width: 100%%; overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #ffffff; font-family: Arial, sans-serif; font-size: 13px; color: #333;">
+  <h1 style="font-size: 18px; text-align: center;">%v</h1>
+  <table cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; min-width: 600px; width: 100%%;">
     <thead>
       <tr style="background-color: #f0f0f0;">
         <th align="left">#</th>
@@ -272,46 +277,50 @@ func getPremTable() string {
       </tr>
     </thead>
     <tbody>
- `
+`, premTable.Competition.Name))
 
-	for _, standing := range premTable.Standings {
-		if standing.Type != "TOTAL" {
-			continue
-		}
-		for _, team := range standing.Table {
-			teamRow := fmt.Sprintf(`<tr>
-		<td>%d</td>
-		<td><img src="%s" alt="" width="16" height="16" style="vertical-align: middle; margin-right: 4px; border-radius: 2px;"> %s</td>
-		<td>%d</td>
-		<td>%d</td>
-		<td>%d</td>
-		<td>%d</td>
-		<td>%d</td>
-		<td>%d</td>
-		<td>%d</td>
-	</tr>`,
-				team.Position,
-				team.Team.Crest,
-				team.Team.ShortName,
-				team.PlayedGames,
-				team.Points,
-				team.Won,
-				team.Lost,
-				team.GoalsFor,
-				team.GoalsAgainst,
-				team.GoalDifference,
-			)
-			premTableHTML += teamRow
-		}
-	}
+    // Iterate over standings and add rows
+    for _, standing := range premTable.Standings {
+        if standing.Type != "TOTAL" {
+            continue // usually only want TOTAL standings
+        }
+        for _, team := range standing.Table {
+            premTableHTML.WriteString(fmt.Sprintf(`
+      <tr>
+        <td>%d</td>
+        <td>%s</td>
+        <td>%d</td>
+        <td>%d</td>
+        <td>%d</td>
+        <td>%d</td>
+        <td>%d</td>
+        <td>%d</td>
+        <td>%d</td>
+      </tr>`,
+                team.Position,
+                team.Team.Name,
+                team.PlayedGames,
+                team.Points,
+                team.Won,
+                team.Lost,
+                team.GoalsFor,
+                team.GoalsAgainst,
+                team.GoalDifference,
+            ))
+        }
+    }
 
-	premTableHTML += `</tbody></table></div>`
-	fmt.Println("working")
+    premTableHTML.WriteString(`
+    </tbody>
+  </table>
+</div>
+`)
 
-	return premTableHTML
+    return premTableHTML.String()
 }
 
-func getCatImage() string {
+
+func getCatImage(_ string) string {
 	url := fmt.Sprintf("https://api.thecatapi.com/v1/images/search?size=med&format=json&api_key=%v", catAPIKey)
 
 	resp, err := http.Get(url)
@@ -341,7 +350,7 @@ func getCatImage() string {
 	return catHTML
 }
 
-func getWeather() string {
+func getWeather(_ string) string {
 
 	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%v&q=tn27%%209fj&days=1&aqi=no&alerts=no", weatherAPIKey)
 
@@ -385,7 +394,7 @@ func getWeather() string {
 	return weatherHtmlBody
 }
 
-func getNews() string {
+func getNews(_ string) string {
 	url := fmt.Sprintf("https://gnews.io/api/v4/search?q=example&lang=en&country=us&max=10&apikey=%v", newsAPIKey)
 
 	resp, err := http.Get(url)
