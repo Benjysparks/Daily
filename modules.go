@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 )
 
 type ForecastStruct struct {
@@ -224,42 +224,102 @@ var moduleFunctions = map[string]func(string) string{
 	// etc.
 }
 
+type Module struct {
+	ID          string
+	Title       string
+	Description string
+	Image       string
+	NeedsInput  bool   // for weather or sports
+	InputType   string // "text" or "select"
+	InputLabel  string
+	Options     []string // only for select input
+}
+
+var Modules = []Module{
+	{
+		ID:          "news",
+		Title:       "News",
+		Description: "Top 10 news stories.",
+		Image:       "/images/NewsIcon.jpg",
+		NeedsInput:  true,
+		InputType:   "select",
+		InputLabel:  "Select your category",
+		Options: []string{
+			"PL", "ELC", "EL1", "EL2", "PD", "SA", "BL1",
+			"FL1", "DED", "PPL", "BSA", "ARGPD", "MLS",
+		},
+	},
+	{
+		ID:          "sports",
+		Title:       "League Table",
+		Description: "Choose your football league.",
+		Image:       "/images/PremierLeague.jpg",
+		NeedsInput:  true,
+		InputType:   "select",
+		InputLabel:  "Select your league",
+		Options: []string{
+			"PL", "ELC", "EL1", "EL2", "PD", "SA", "BL1",
+			"FL1", "DED", "PPL", "BSA", "ARGPD", "MLS",
+		},
+	},
+	{
+		ID:          "weather",
+		Title:       "Weather",
+		Description: "Hourly forecast for your city.",
+		Image:       "/images/Weather.jpg",
+		NeedsInput:  true,
+		InputType:   "text",
+		InputLabel:  "Enter Postcode",
+	},
+	{
+		ID:          "cats",
+		Title:       "Cats",
+		Description: "Random daily cat image or gif.",
+		Image:       "/images/Cats.jpg",
+	},
+}
+
+func (cfg *apiConfig) handleModules(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Modules)
+}
+
 func getPremTable(league string) string {
-    url := fmt.Sprintf("https://api.football-data.org/v4/competitions/%v/standings", league)
+	url := fmt.Sprintf("https://api.football-data.org/v4/competitions/%v/standings", league)
 
-    req, err := http.NewRequest("GET", url, nil)
-    if err != nil {
-        fmt.Println("Request creation failed:", err)
-        return ""
-    }
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		fmt.Println("Request creation failed:", err)
+		return ""
+	}
 
-    req.Header.Add("X-Auth-Token", premTableAPIKey)
+	req.Header.Add("X-Auth-Token", premTableAPIKey)
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        fmt.Println(err)
-        return ""
-    }
-    defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != http.StatusOK {
-        fmt.Println("Bad status code:", resp.StatusCode)
-        return ""
-    }
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Bad status code:", resp.StatusCode)
+		return ""
+	}
 
-    var premTable PremTable
-    err = json.NewDecoder(resp.Body).Decode(&premTable)
-    if err != nil {
-        fmt.Println(err)
-        return ""
-    }
+	var premTable PremTable
+	err = json.NewDecoder(resp.Body).Decode(&premTable)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
 	fmt.Println(premTable.Competition.Name)
 
-    // Start building HTML with league name
-    var premTableHTML strings.Builder
+	// Start building HTML with league name
+	var premTableHTML strings.Builder
 
-    premTableHTML.WriteString(fmt.Sprintf(`
+	premTableHTML.WriteString(fmt.Sprintf(`
 <div style="max-width: 100%%; overflow-x: auto; border: 1px solid #ccc; border-radius: 8px; padding: 10px; background-color: #ffffff; font-family: Arial, sans-serif; font-size: 13px; color: #333;">
   <h1 style="font-size: 18px; text-align: center;">%v</h1>
   <table cellpadding="6" cellspacing="0" border="0" style="border-collapse: collapse; min-width: 600px; width: 100%%;">
@@ -279,15 +339,16 @@ func getPremTable(league string) string {
     <tbody>
 `, premTable.Competition.Name))
 
-    // Iterate over standings and add rows
-    for _, standing := range premTable.Standings {
-        if standing.Type != "TOTAL" {
-            continue // usually only want TOTAL standings
-        }
-        for _, team := range standing.Table {
-            premTableHTML.WriteString(fmt.Sprintf(`
+	// Iterate over standings and add rows
+	for _, standing := range premTable.Standings {
+		if standing.Type != "TOTAL" {
+			continue // usually only want TOTAL standings
+		}
+		for _, team := range standing.Table {
+			premTableHTML.WriteString(fmt.Sprintf(`
       <tr>
         <td>%d</td>
+		<td><img src="%s" alt="Crest" style="width: 25px; height: 25px; vertical-align: middle;"></td>
         <td>%s</td>
         <td>%d</td>
         <td>%d</td>
@@ -297,28 +358,28 @@ func getPremTable(league string) string {
         <td>%d</td>
         <td>%d</td>
       </tr>`,
-                team.Position,
-                team.Team.Name,
-                team.PlayedGames,
-                team.Points,
-                team.Won,
-                team.Lost,
-                team.GoalsFor,
-                team.GoalsAgainst,
-                team.GoalDifference,
-            ))
-        }
-    }
+				team.Position,
+				team.Team.Crest,
+				team.Team.Name,
+				team.PlayedGames,
+				team.Points,
+				team.Won,
+				team.Lost,
+				team.GoalsFor,
+				team.GoalsAgainst,
+				team.GoalDifference,
+			))
+		}
+	}
 
-    premTableHTML.WriteString(`
+	premTableHTML.WriteString(`
     </tbody>
   </table>
 </div>
 `)
 
-    return premTableHTML.String()
+	return premTableHTML.String()
 }
-
 
 func getCatImage(_ string) string {
 	url := fmt.Sprintf("https://api.thecatapi.com/v1/images/search?size=med&format=json&api_key=%v", catAPIKey)
@@ -350,9 +411,11 @@ func getCatImage(_ string) string {
 	return catHTML
 }
 
-func getWeather(_ string) string {
+func getWeather(location string) string {
 
-	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%v&q=tn27%%209fj&days=1&aqi=no&alerts=no", weatherAPIKey)
+	location = strings.ReplaceAll(location, " ", "")
+	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%v&q=%v&days=1&aqi=no&alerts=no", weatherAPIKey, location)
+	fmt.Println("Requesting URL:", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -373,7 +436,7 @@ func getWeather(_ string) string {
 		return ""
 	}
 
-	weatherHtmlBody = `<h3 style="color: white">Daily Weather</h3><div style="overflow-x: auto; white-space: nowrap; padding: 6px;">`
+	weatherHtmlBody = fmt.Sprintf(`<h3 style="color: white">Todays weather for %v</h3><div style="overflow-x: auto; white-space: nowrap; padding: 6px;">`, forecast.Location.Name)
 
 	for _, hour := range forecast.Forecast.Forecastday[0].Hour[:24] {
 		card := fmt.Sprintf(`
@@ -394,8 +457,8 @@ func getWeather(_ string) string {
 	return weatherHtmlBody
 }
 
-func getNews(_ string) string {
-	url := fmt.Sprintf("https://gnews.io/api/v4/search?q=example&lang=en&country=us&max=10&apikey=%v", newsAPIKey)
+func getNews(category string) string {
+	url := fmt.Sprintf("https://gnews.io/api/v4/top-headlines?category=%v&lang=en&country=uk&max=10&apikey=%v", newsAPIKey, category)
 
 	resp, err := http.Get(url)
 	if err != nil {

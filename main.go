@@ -151,59 +151,68 @@ func emailer(modulePreferences string) {
 }
 
 func UnpackUserPreferences(row database.ShowUserPreferencesByEmailRow) ([]string, []string) {
-    var prefs []string
-    var extraData []string
+	var prefs []string
+	var extraData []string
 
-    if row.Preferences.Valid {
-        if err := json.Unmarshal(row.Preferences.RawMessage, &prefs); err != nil {
-            prefs = []string{}
-        }
-    }
+	if row.Preferences.Valid {
+		if err := json.Unmarshal(row.Preferences.RawMessage, &prefs); err != nil {
+			fmt.Println("Error decoding preferences:", err)
+			fmt.Println("Raw data:", string(row.Preferences.RawMessage))
+			prefs = []string{}
+		}
+	} else {
+		fmt.Println("row.Preferences is not valid")
+	}
 
-    if row.PreferenceVariables.Valid {
-        if err := json.Unmarshal(row.PreferenceVariables.RawMessage, &extraData); err != nil {
-            extraData = []string{}
-        }
-    }
+	if row.PreferenceVariables.Valid {
+		if err := json.Unmarshal(row.PreferenceVariables.RawMessage, &extraData); err != nil {
+			fmt.Println("Error decoding extraData:", err)
+			fmt.Println("Raw data:", string(row.PreferenceVariables.RawMessage))
+			extraData = []string{}
+		}
+	} else {
+		fmt.Println("row.PreferenceVariables is not valid")
+	}
 
-    return prefs, extraData
+	fmt.Println("Unpacked prefs:", prefs)
+	fmt.Println("Unpacked extraData:", extraData)
+
+	return prefs, extraData
 }
-
 
 func (cfg *apiConfig) emailerPrefs(email string) {
-    user, err := cfg.db.ShowUserPreferencesByEmail(context.Background(), email)
-    if err != nil {
-        // handle error, maybe log and return early
-        return
-    }
+	user, err := cfg.db.ShowUserPreferencesByEmail(context.Background(), email)
+	if err != nil {
+		// handle error, maybe log and return early
+		return
+	}
 
-    userPrefs, extraData := UnpackUserPreferences(user)
+	userPrefs, extraData := UnpackUserPreferences(user)
 
-    var combinedHTML strings.Builder
+	var combinedHTML strings.Builder
 
-    for i, moduleName := range userPrefs {
-        fn, ok := moduleFunctions[moduleName]
-        if !ok {
-            continue
-        }
+	for i, moduleName := range userPrefs {
+		fn, ok := moduleFunctions[moduleName]
+		if !ok {
+			continue
+		}
 
-        // Defensive: check if extraData exists for this index
-        var arg string
-        if i < len(extraData) {
-            arg = extraData[i]
-        } else {
-            arg = "" // or some default
-        }
+		// Defensive: check if extraData exists for this index
+		var arg string
+		if i < len(extraData) {
+			arg = extraData[i]
+		} else {
+			arg = "" // or some default
+		}
 
-        htmlPart := fn(arg)                 // pass the corresponding extraData
-        combinedHTML.WriteString(htmlPart) // add it to the builder
-    }
+		htmlPart := fn(arg)                // pass the corresponding extraData
+		combinedHTML.WriteString(htmlPart) // add it to the builder
+	}
 
-    emailBody := combinedHTML.String()
+	emailBody := combinedHTML.String()
 
-    emailer(emailBody)
+	emailer(emailBody)
 }
-
 
 func BatteryCheck() {
 	batteries, err := battery.GetAll()
@@ -276,8 +285,9 @@ func main() {
 	})
 	mux.HandleFunc("POST /api/preferences", apiCfg.handlerUpdatePreferences)
 	mux.HandleFunc("GET /api/showpreferences", apiCfg.handlerShowUserPreferences)
-	mux.HandleFunc("GET /api/userinfo", apiCfg.handlerSendInfoToFront)
+	mux.HandleFunc("/api/userinfo", apiCfg.handlerGetUserByToken)
 	mux.HandleFunc("GET /api/clearuser", apiCfg.handlerClearUsers)
+	mux.HandleFunc("GET /api/modules", apiCfg.handleModules)
 
 	go func() {
 		log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
