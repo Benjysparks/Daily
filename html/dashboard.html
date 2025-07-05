@@ -1,452 +1,544 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background-color: #2c3e50;
-      color: white;
-      padding: 20px;
-      text-align: center;
-      z-index: 10;
-    }
-
-    .layout {
-      display: flex;
-      width: 100%;
-      margin-top: 80px;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    .dropzone {
-      width: 300px;
-      padding: 10px;
-      background: #ecf0f1;
-      border-right: 2px solid #bdc3c7;
-      overflow-y: auto;
-    }
-
-    .dropzone h2 {
-      font-size: 1.2rem;
-      margin-top: 0;
-    }
-
-    .card-container {
-      flex: 1;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-      overflow-y: auto;
-    }
-
-    .card {
-      background-color: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      padding: 10px;
-    }
-
-    .card img {
-      width: 100%;
-      height: 150px;
-      object-fit: contain;
-      background-color: #eee;
-    }
-
-    .card-content {
-      padding: 10px 0;
-    }
-
-    .card-title {
-      font-size: 1.2rem;
-      font-weight: bold;
-    }
-
-    .card-description {
-      font-size: 1rem;
-      color: #555;
-    }
-
-    .card-input, .sports-dropdown {
-      width: 100%;
-      padding: 8px;
-      margin-top: 10px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-
-    .dropzone-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background-color: #eaf6ff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin-bottom: 10px;
-      font-size: 0.9rem;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
-      cursor: move;
-    }
-
-    .dropzone-card img {
-      height: 30px;
-      width: 30px;
-      object-fit: contain;
-      margin-right: 10px;
-    }
-
-    .dropzone-card .info {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .dropzone-card .title {
-      font-weight: bold;
-      margin-bottom: 2px;
-    }
-
-    .dropzone-card .detail {
-      font-size: 0.8rem;
-      color: #555;
-    }
-
-    .remove-btn {
-      cursor: pointer;
-      font-size: 1.2rem;
-      color: #a00;
-      margin-left: 12px;
-    }
-
-    @media (max-width: 768px) {
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
       body {
-        overflow: auto;
+        font-family: Arial, sans-serif;
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
-      .layout {
-        flex-direction: column;
-        height: auto;
-        overflow: visible;
+      header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: #2c3e50;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        z-index: 10;
+      }
+
+      .main-content {
+        margin-top: 80px;
+        flex: 1;
+        overflow: hidden;
       }
 
       .dropzone {
-        width: 100%;
-        height: auto;
-        max-height: 50vh;
+        background: #ecf0f1;
+        border-right: 2px solid #bdc3c7;
+        height: 100%;
         overflow-y: auto;
-        border-right: none;
-        border-bottom: 2px solid #bdc3c7;
       }
 
-      .card-container {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        padding: 10px;
-        gap: 10px;
-        overflow-y: visible;
+      .dropzone h2 {
+        font-size: 1.2rem;
+        margin-top: 0;
       }
 
       .dropzone-card {
-        padding: 6px 8px;
-        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #eaf6ff;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        font-size: 0.9rem;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+        cursor: move;
       }
 
       .dropzone-card img {
-        height: 24px;
-        width: 24px;
+        height: 30px;
+        width: 30px;
+        object-fit: contain;
+        margin-right: 10px;
       }
 
-      .card-input, .sports-dropdown {
-        font-size: 0.9rem;
-        padding: 6px;
+      .dropzone-card .info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
       }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Welcome, <span id="username">User</span>!</h1>
-  </header>
 
-  <div class="layout">
-    <div class="dropzone" id="dropzone">
-      <h2>My Dashboard</h2>
+      .dropzone-card .title {
+        font-weight: bold;
+        margin-bottom: 2px;
+      }
+
+      .dropzone-card .detail {
+        font-size: 0.8rem;
+        color: #555;
+      }
+
+      .remove-btn {
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: #a00;
+        margin-left: 12px;
+      }
+
+      #module-palette {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        min-height: 0;
+      }
+
+      .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+      }
+
+      .card {
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        padding: 10px;
+      }
+
+      .card img {
+        width: 100%;
+        height: 150px;
+        object-fit: contain;
+        background-color: #eee;
+      }
+
+      .card-content {
+        padding: 10px 0;
+      }
+
+      .card-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+      }
+
+      .card-description {
+        font-size: 1rem;
+        color: #555;
+      }
+
+      .card-input,
+      .card-select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 10px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+
+      /* Mobile Fixes */
+      @media (max-width: 768px) {
+        html,
+        body {
+          height: 100%;
+          margin: 0;
+          overflow: hidden;
+        }
+
+        .main-content {
+          height: calc(100vh - 80px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        .row.h-100 {
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .dropzone {
+          height: 35%;
+          overflow-y: auto;
+          padding: 10px;
+          border-bottom: 2px solid #bdc3c7;
+          border-right: none;
+        }
+
+        .col-12.col-md-9 {
+          height: 65%;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          min-height: 0;
+        }
+
+        #module-palette {
+          flex: 1;
+          overflow-y: auto;
+          padding: 10px;
+          min-height: 0;
+        }
+
+        .card-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 16px;
+        }
+
+        .card {
+          display: flex;
+          flex-direction: column;
+          padding: 8px;
+          font-size: 0.9rem;
+          border-radius: 10px;
+        }
+
+        .card img {
+          height: 100px;
+          object-fit: contain;
+          margin-bottom: 6px;
+        }
+
+        .card-title {
+          font-size: 1rem;
+          font-weight: 600;
+        }
+
+        .card-description {
+          font-size: 0.85rem;
+          margin-bottom: 6px;
+        }
+
+        .card-input,
+        .card-select {
+          font-size: 0.9rem;
+          padding: 6px;
+          margin-top: 6px;
+        }
+
+        .dropzone-card {
+          font-size: 0.9rem;
+          padding: 6px 8px;
+        }
+
+        .dropzone-card img {
+          height: 28px;
+          width: 28px;
+        }
+      }
+
+      .row.h-100 {
+        height: 100%;
+        min-height: 0;
+      }
+
+      .col-12.col-md-3,
+      .col-12.col-md-9 {
+        min-height: 0;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <h1>Welcome, <span id="username">User</span>!</h1>
+    </header>
+
+    <div class="main-content container-fluid">
+      <div class="row h-100">
+        <!-- Dropzone -->
+        <div class="col-12 col-md-3 dropzone p-3" id="dropzone">
+          <h2>My Dashboard</h2>
+          <!-- Dropzone cards go here -->
+        </div>
+
+        <!-- Module Palette -->
+        <div class="col-12 col-md-9 d-flex flex-column">
+          <div id="module-palette">
+            <div class="card-container" id="card-container">
+              <!-- Module cards will be inserted here by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card-container" id="module-palette">
-      <!-- Cards loaded from backend -->
-    </div>
-  </div>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("token");
+        if (!token) return (window.location.href = "/login.html");
 
+        // Set username
+        fetch("/api/userinfo", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((res) => res.json())
+          .then(
+            (user) =>
+              (document.getElementById("username").textContent = user.fullName)
+          );
 
-  <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const token = localStorage.getItem("token");
-  if (!token) return window.location.href = "/login.html";
+        const dropzone = document.getElementById("dropzone");
+        const modulePalette = document.getElementById("module-palette");
+        const container = document.getElementById("card-container");
+        let draggedCard = null;
+        let moduleMap = {};
 
-  // Set username
-  fetch("/api/userinfo", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    }
-  })
-    .then(res => res.json())
-    .then(user => document.getElementById("username").textContent = user.fullName);
+        // Load all modules
+        Promise.all([
+          fetch("/api/modules").then((res) => res.json()),
+          fetch("/api/moduledata", {
+            headers: { Authorization: `Bearer ${token}` },
+          }).then((res) => res.json()),
+        ]).then(([modules, userData]) => {
+          moduleMap = Object.fromEntries(modules.map((mod) => [mod.id, mod]));
 
-  const dropzone = document.getElementById("dropzone");
-  const modulePalette = document.getElementById("module-palette");
-  let draggedCard = null;
-  let moduleMap = {};
-
-  // Load all modules
-  Promise.all([
-    fetch("/api/modules").then(res => res.json()),
-    fetch("/api/moduledata", {
-      headers: { "Authorization": `Bearer ${token}` }
-    }).then(res => res.json())
-  ])
-    .then(([modules, userData]) => {
-      moduleMap = Object.fromEntries(modules.map(mod => [mod.id, mod]));
-
-      // Create module palette cards
-      modules.forEach(mod => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.setAttribute("data-preference", mod.id);
-        card.innerHTML = `
-          <img src="${mod.image || '/images/fallback.jpg'}" alt="${mod.title}" />
+          // Create module palette cards
+          modules.forEach((mod) => {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.setAttribute("data-preference", mod.id);
+            card.innerHTML = `
+          <img src="${mod.image || "/images/fallback.jpg"}" alt="${
+              mod.title
+            }" />
           <div class="card-content">
             <div class="card-title">${mod.title}</div>
             <div class="card-description">${mod.description}</div>
           </div>
         `;
 
-        if (mod.needsInput && mod.inputType === "text") {
-          const input = document.createElement("input");
-          input.className = "card-input";
-          input.placeholder = mod.inputLabel;
-          card.querySelector(".card-content").appendChild(input);
-        }
+            if (mod.needsInput && mod.inputType === "text") {
+              const input = document.createElement("input");
+              input.className = "card-input";
+              input.placeholder = mod.inputLabel;
+              card.querySelector(".card-content").appendChild(input);
+            }
 
-        if (mod.needsInput && mod.inputType === "select") {
-          const select = document.createElement("select");
-          select.className = "card-select";
-          select.innerHTML = `<option value="">${mod.inputLabel}</option>`;
-          mod.options.forEach(opt => {
-            select.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+            if (mod.needsInput && mod.inputType === "select") {
+              const select = document.createElement("select");
+              select.className = "card-select";
+              select.innerHTML = `<option value="">${mod.inputLabel}</option>`;
+              mod.options.forEach((opt) => {
+                select.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+              });
+              card.querySelector(".card-content").appendChild(select);
+            }
+
+            card.setAttribute("draggable", "true");
+            card.addEventListener("dragstart", () => {
+              if (mod.needsInput) {
+                if (mod.inputType === "text") {
+                  const val = card.querySelector(".card-input").value.trim();
+                  if (!val) return alert("Please enter a value first.");
+                }
+                if (mod.inputType === "select") {
+                  const val = card.querySelector(".card-select").value;
+                  if (!val) return alert("Please select an option first.");
+                }
+              }
+              draggedCard = card;
+            });
+            card.addEventListener("dragend", () => (draggedCard = null));
+
+            modulePalette.appendChild(card);
           });
-          card.querySelector(".card-content").appendChild(select);
-        }
 
-        card.setAttribute("draggable", "true");
-        card.addEventListener("dragstart", () => {
+          // Restore user's previous module selection
+          if (userData.Preferences && userData.PreferenceVariables) {
+            userData.Preferences.forEach((modId, index) => {
+              const mod = moduleMap[modId];
+              if (!mod) return;
+
+              const clone = document.createElement("div");
+              clone.className = "dropzone-card";
+              clone.setAttribute("data-preference", modId);
+
+              const img = document.createElement("img");
+              img.src = mod.image || "/images/fallback.jpg";
+              img.alt = mod.title;
+              clone.appendChild(img);
+
+              const info = document.createElement("div");
+              info.className = "info";
+
+              const title = document.createElement("div");
+              title.className = "title";
+              title.textContent = mod.title;
+
+              const detail = document.createElement("div");
+              detail.className = "detail";
+              const extra = userData.PreferenceVariables[index] || "";
+
+              if (mod.needsInput) {
+                if (mod.inputType === "text") {
+                  detail.textContent = `City: ${extra}`;
+                } else if (mod.inputType === "select") {
+                  const label =
+                    mod.options.find((opt) => opt.value === extra)?.label ||
+                    extra;
+                  detail.textContent = `Option: ${label}`;
+                }
+              } else {
+                detail.textContent = "No extra input";
+              }
+
+              clone.setAttribute("data-extra", extra);
+              info.appendChild(title);
+              info.appendChild(detail);
+              clone.appendChild(info);
+
+              const removeBtn = document.createElement("div");
+              removeBtn.className = "remove-btn";
+              removeBtn.textContent = "×";
+              removeBtn.onclick = () => {
+                clone.remove();
+                syncDashboard();
+              };
+              clone.appendChild(removeBtn);
+
+              clone.setAttribute("draggable", "true");
+              clone.addEventListener("dragstart", () =>
+                clone.classList.add("dragging")
+              );
+              clone.addEventListener("dragend", () => {
+                clone.classList.remove("dragging");
+                syncDashboard();
+              });
+
+              dropzone.appendChild(clone);
+            });
+          }
+
+          syncDashboard(); // trigger on load to make sure state is correct
+        });
+
+        dropzone.addEventListener("dragover", (e) => e.preventDefault());
+
+        dropzone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          if (!draggedCard) return;
+
+          const clone = document.createElement("div");
+          const pref = draggedCard.dataset.preference;
+          const mod = moduleMap[pref];
+          if (!mod) return;
+
+          clone.className = "dropzone-card";
+          clone.setAttribute("data-preference", pref);
+
+          const img = draggedCard.querySelector("img").cloneNode(true);
+          clone.appendChild(img);
+
+          const info = document.createElement("div");
+          info.className = "info";
+
+          const title = document.createElement("div");
+          title.className = "title";
+          title.textContent = mod.title;
+
+          const detail = document.createElement("div");
+          detail.className = "detail";
+
+          let extra = "";
           if (mod.needsInput) {
             if (mod.inputType === "text") {
-              const val = card.querySelector(".card-input").value.trim();
-              if (!val) return alert("Please enter a value first.");
+              extra = draggedCard.querySelector(".card-input").value.trim();
+              detail.textContent = `City: ${extra}`;
+            } else if (mod.inputType === "select") {
+              const select = draggedCard.querySelector(".card-select");
+              extra = select.value;
+              const label = select.options[select.selectedIndex]?.text || extra;
+              detail.textContent = `Option: ${label}`;
             }
-            if (mod.inputType === "select") {
-              const val = card.querySelector(".card-select").value;
-              if (!val) return alert("Please select an option first.");
-            }
+          } else {
+            detail.textContent = "No extra input";
           }
-          draggedCard = card;
+
+          clone.setAttribute("data-extra", extra);
+          info.appendChild(title);
+          info.appendChild(detail);
+          clone.appendChild(info);
+
+          const removeBtn = document.createElement("div");
+          removeBtn.className = "remove-btn";
+          removeBtn.textContent = "×";
+          removeBtn.onclick = () => {
+            clone.remove();
+            syncDashboard();
+          };
+          clone.appendChild(removeBtn);
+
+          clone.setAttribute("draggable", "true");
+          clone.addEventListener("dragstart", () =>
+            clone.classList.add("dragging")
+          );
+          clone.addEventListener("dragend", () => {
+            clone.classList.remove("dragging");
+            syncDashboard();
+          });
+
+          dropzone.appendChild(clone);
+          syncDashboard();
         });
-        card.addEventListener("dragend", () => draggedCard = null);
 
-        modulePalette.appendChild(card);
+        dropzone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          const dragging = dropzone.querySelector(".dragging");
+          const afterElement = [
+            ...dropzone.querySelectorAll(".dropzone-card:not(.dragging)"),
+          ].reduce(
+            (closest, child) => {
+              const box = child.getBoundingClientRect();
+              const offset = e.clientY - box.top - box.height / 2;
+              return offset < 0 && offset > closest.offset
+                ? { offset, element: child }
+                : closest;
+            },
+            { offset: Number.NEGATIVE_INFINITY }
+          ).element;
+          if (afterElement) {
+            dropzone.insertBefore(dragging, afterElement);
+          } else {
+            dropzone.appendChild(dragging);
+          }
+        });
+
+        function syncDashboard() {
+          const modules = [...dropzone.querySelectorAll(".dropzone-card")];
+          const preferences = modules.map((m) => m.dataset.preference);
+          const extraData = modules.map((m) => m.dataset.extra || "");
+
+          fetch("/api/preferences", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ preferences, extraData }),
+          });
+        }
       });
-
-      // Restore user's previous module selection
-      if (userData.Preferences && userData.PreferenceVariables) {
-  userData.Preferences.forEach((modId, index) => {
-    const mod = moduleMap[modId];
-    if (!mod) return;
-
-    const clone = document.createElement("div");
-    clone.className = "dropzone-card";
-    clone.setAttribute("data-preference", modId);
-
-    const img = document.createElement("img");
-    img.src = mod.image || "/images/fallback.jpg";
-    img.alt = mod.title;
-    clone.appendChild(img);
-
-    const info = document.createElement("div");
-    info.className = "info";
-
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = mod.title;
-
-    const detail = document.createElement("div");
-    detail.className = "detail";
-    const extra = userData.PreferenceVariables[index] || "";
-
-    if (mod.needsInput) {
-      if (mod.inputType === "text") {
-        detail.textContent = `City: ${extra}`;
-      } else if (mod.inputType === "select") {
-        const label = mod.options.find(opt => opt.value === extra)?.label || extra;
-        detail.textContent = `Option: ${label}`;
-      }
-    } else {
-      detail.textContent = "No extra input";
-    }
-
-    clone.setAttribute("data-extra", extra);
-    info.appendChild(title);
-    info.appendChild(detail);
-    clone.appendChild(info);
-
-    const removeBtn = document.createElement("div");
-    removeBtn.className = "remove-btn";
-    removeBtn.textContent = "×";
-    removeBtn.onclick = () => {
-      clone.remove();
-      syncDashboard();
-    };
-    clone.appendChild(removeBtn);
-
-    clone.setAttribute("draggable", "true");
-    clone.addEventListener("dragstart", () => clone.classList.add("dragging"));
-    clone.addEventListener("dragend", () => {
-      clone.classList.remove("dragging");
-      syncDashboard();
-    });
-
-    dropzone.appendChild(clone);
-  });
-}
-
-
-      syncDashboard(); // trigger on load to make sure state is correct
-    });
-
-  dropzone.addEventListener("dragover", e => e.preventDefault());
-
-  dropzone.addEventListener("drop", e => {
-    e.preventDefault();
-    if (!draggedCard) return;
-
-    const clone = document.createElement("div");
-    const pref = draggedCard.dataset.preference;
-    const mod = moduleMap[pref];
-    if (!mod) return;
-
-    clone.className = "dropzone-card";
-    clone.setAttribute("data-preference", pref);
-
-    const img = draggedCard.querySelector("img").cloneNode(true);
-    clone.appendChild(img);
-
-    const info = document.createElement("div");
-    info.className = "info";
-
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = mod.title;
-
-    const detail = document.createElement("div");
-    detail.className = "detail";
-
-    let extra = "";
-    if (mod.needsInput) {
-      if (mod.inputType === "text") {
-        extra = draggedCard.querySelector(".card-input").value.trim();
-        detail.textContent = `City: ${extra}`;
-      } else if (mod.inputType === "select") {
-        const select = draggedCard.querySelector(".card-select");
-        extra = select.value;
-        const label = select.options[select.selectedIndex]?.text || extra;
-        detail.textContent = `Option: ${label}`;
-      }
-    } else {
-      detail.textContent = "No extra input";
-    }
-
-    clone.setAttribute("data-extra", extra);
-    info.appendChild(title);
-    info.appendChild(detail);
-    clone.appendChild(info);
-
-    const removeBtn = document.createElement("div");
-    removeBtn.className = "remove-btn";
-    removeBtn.textContent = "×";
-    removeBtn.onclick = () => {
-      clone.remove();
-      syncDashboard();
-    };
-    clone.appendChild(removeBtn);
-
-    clone.setAttribute("draggable", "true");
-    clone.addEventListener("dragstart", () => clone.classList.add("dragging"));
-    clone.addEventListener("dragend", () => {
-      clone.classList.remove("dragging");
-      syncDashboard();
-    });
-
-    dropzone.appendChild(clone);
-    syncDashboard();
-  });
-
-  dropzone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    const dragging = dropzone.querySelector(".dragging");
-    const afterElement = [...dropzone.querySelectorAll(".dropzone-card:not(.dragging)")]
-      .reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = e.clientY - box.top - box.height / 2;
-        return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
-      }, { offset: Number.NEGATIVE_INFINITY }).element;
-    if (afterElement) {
-      dropzone.insertBefore(dragging, afterElement);
-    } else {
-      dropzone.appendChild(dragging);
-    }
-  });
-
-  function syncDashboard() {
-    const modules = [...dropzone.querySelectorAll(".dropzone-card")];
-    const preferences = modules.map(m => m.dataset.preference);
-    const extraData = modules.map(m => m.dataset.extra || "");
-
-    fetch("/api/preferences", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ preferences, extraData }),
-    });
-  }
-});
-</script>
-
-
-
-
-
-</body>
+    </script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-ndDqU0Gzau9qJ1lfW4pNLlhNTkCfHzAVBReH9diLvGRem5+R9g2FzA8ZGN954O5Q"
+      crossorigin="anonymous"
+    ></script>
+  </body>
 </html>
