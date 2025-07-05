@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"workspace/github.com/Benjysparks/daily/internal/database"
 )
 
 type ForecastStruct struct {
@@ -219,20 +220,25 @@ var premTableHTML string
 var moduleFunctions = map[string]func(string) string{
 	"news":    getNews, // returns HTML string
 	"weather": getWeather,
-	"sports":  getPremTable,
+	"sports":  getleagueTable,
 	"cats":    getCatImage,
 	// etc.
 }
 
+type Option struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
 type Module struct {
-	ID          string
-	Title       string
-	Description string
-	Image       string
-	NeedsInput  bool   // for weather or sports
-	InputType   string // "text" or "select"
-	InputLabel  string
-	Options     []string // only for select input
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Image       string   `json:"image"`
+	NeedsInput  bool     `json:"needsInput"`
+	InputType   string   `json:"inputType"` // "text" or "select"
+	InputLabel  string   `json:"inputLabel"`
+	Options     []Option `json:"options"` // only used if InputType == "select"
 }
 
 var Modules = []Module{
@@ -244,22 +250,40 @@ var Modules = []Module{
 		NeedsInput:  true,
 		InputType:   "select",
 		InputLabel:  "Select your category",
-		Options: []string{
-			"PL", "ELC", "EL1", "EL2", "PD", "SA", "BL1",
-			"FL1", "DED", "PPL", "BSA", "ARGPD", "MLS",
+		Options: []Option{
+			{Value: "general", Label: "General"},
+			{Value: "world", Label: "World"},
+			{Value: "nation", Label: "National"},
+			{Value: "business", Label: "Business"},
+			{Value: "technology", Label: "Technology"},
+			{Value: "entertainment", Label: "Entertainment"},
+			{Value: "sports", Label: "Sports"},
+			{Value: "science", Label: "Science"},
+			{Value: "health", Label: "Health"},
 		},
 	},
 	{
 		ID:          "sports",
 		Title:       "League Table",
 		Description: "Choose your football league.",
-		Image:       "/images/PremierLeague.jpg",
+		Image:       "/images/league.jpg",
 		NeedsInput:  true,
 		InputType:   "select",
 		InputLabel:  "Select your league",
-		Options: []string{
-			"PL", "ELC", "EL1", "EL2", "PD", "SA", "BL1",
-			"FL1", "DED", "PPL", "BSA", "ARGPD", "MLS",
+		Options: []Option{
+			{Value: "PL", Label: "Premier League"},
+			{Value: "ELC", Label: "Championship"},
+			{Value: "EL1", Label: "League One"},
+			{Value: "EL2", Label: "League Two"},
+			{Value: "PD", Label: "La Liga"},
+			{Value: "SA", Label: "Serie A"},
+			{Value: "BL1", Label: "Bundesliga"},
+			{Value: "FL1", Label: "Ligue 1"},
+			{Value: "DED", Label: "Eredivisie"},
+			{Value: "PPL", Label: "Primeira Liga"},
+			{Value: "BSA", Label: "Brasileirão"},
+			{Value: "ARGPD", Label: "Argentine Primera"},
+			{Value: "MLS", Label: "MLS"},
 		},
 	},
 	{
@@ -279,12 +303,43 @@ var Modules = []Module{
 	},
 }
 
-func (cfg *apiConfig) handleModules(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handleGetModulesMeta(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Modules)
 }
 
-func getPremTable(league string) string {
+func (cfg *apiConfig) handlerGetModuleExtraData(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, `{"error": "Missing Authorization header"}`, http.StatusUnauthorized)
+		return
+	}
+
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		http.Error(w, `{"error": "Invalid Authorization header format"}`, http.StatusUnauthorized)
+		return
+	}
+
+	tokenString := parts[1]
+
+	prefs, err := cfg.db.GetPreferencesByToken(r.Context(), tokenString)
+	if err != nil {
+		http.Error(w, `{"error": "Token not found in database"}`, http.StatusUnauthorized)
+	}
+
+	userPrefs := database.UserPreference{
+		Preferences:         prefs.Preferences,
+		PreferenceVariables: prefs.PreferenceVariables,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(userPrefs)
+}
+
+func getleagueTable(league string) string {
 	url := fmt.Sprintf("https://api.football-data.org/v4/competitions/%v/standings", league)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -415,7 +470,6 @@ func getWeather(location string) string {
 
 	location = strings.ReplaceAll(location, " ", "")
 	url := fmt.Sprintf("http://api.weatherapi.com/v1/forecast.json?key=%v&q=%v&days=1&aqi=no&alerts=no", weatherAPIKey, location)
-	fmt.Println("Requesting URL:", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -458,7 +512,7 @@ func getWeather(location string) string {
 }
 
 func getNews(category string) string {
-	url := fmt.Sprintf("https://gnews.io/api/v4/top-headlines?category=%v&lang=en&country=uk&max=10&apikey=%v", newsAPIKey, category)
+	url := fmt.Sprintf("https://gnews.io/api/v4/top-headlines?category=%v&lang=en&country=uk&max=10&apikey=%v", category, newsAPIKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -479,7 +533,7 @@ func getNews(category string) string {
 		return ""
 	}
 
-	newsHTML = `<h3 style="color: white">Top news</h3><div style="max-width: 375px; height: 600px; overflow-y: auto; padding: 8px; border: 1px solid #ccc; margin: 0 auto;">`
+	newsHTML = fmt.Sprintf(`<h3 style="color: white">Top %v news</h3><div style="max-width: 375px; height: 600px; overflow-y: auto; padding: 8px; border: 1px solid #ccc; margin: 0 auto;">`, category)
 
 	for _, article := range newsArticles.Articles {
 		t, err := time.Parse(time.RFC3339, article.PublishedAt)

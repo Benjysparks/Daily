@@ -9,6 +9,7 @@
       font-family: Arial, sans-serif;
       margin: 0;
       display: flex;
+      flex-direction: column;
       height: 100vh;
       overflow: hidden;
     }
@@ -29,6 +30,8 @@
       display: flex;
       width: 100%;
       margin-top: 80px;
+      flex: 1;
+      overflow: hidden;
     }
 
     .dropzone {
@@ -134,6 +137,49 @@
       color: #a00;
       margin-left: 12px;
     }
+
+    @media (max-width: 768px) {
+      body {
+        overflow: auto;
+      }
+
+      .layout {
+        flex-direction: column;
+        height: auto;
+        overflow: visible;
+      }
+
+      .dropzone {
+        width: 100%;
+        height: auto;
+        max-height: 50vh;
+        overflow-y: auto;
+        border-right: none;
+        border-bottom: 2px solid #bdc3c7;
+      }
+
+      .card-container {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        padding: 10px;
+        gap: 10px;
+        overflow-y: visible;
+      }
+
+      .dropzone-card {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+      }
+
+      .dropzone-card img {
+        height: 24px;
+        width: 24px;
+      }
+
+      .card-input, .sports-dropdown {
+        font-size: 0.9rem;
+        padding: 6px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -151,171 +197,256 @@
     </div>
   </div>
 
+
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        return window.location.href = "/login.html";
-      }
+document.addEventListener("DOMContentLoaded", () => {
+  const token = localStorage.getItem("token");
+  if (!token) return window.location.href = "/login.html";
 
-      fetch("/api/userinfo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+  // Set username
+  fetch("/api/userinfo", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    }
+  })
+    .then(res => res.json())
+    .then(user => document.getElementById("username").textContent = user.fullName);
+
+  const dropzone = document.getElementById("dropzone");
+  const modulePalette = document.getElementById("module-palette");
+  let draggedCard = null;
+  let moduleMap = {};
+
+  // Load all modules
+  Promise.all([
+    fetch("/api/modules").then(res => res.json()),
+    fetch("/api/moduledata", {
+      headers: { "Authorization": `Bearer ${token}` }
+    }).then(res => res.json())
+  ])
+    .then(([modules, userData]) => {
+      moduleMap = Object.fromEntries(modules.map(mod => [mod.id, mod]));
+
+      // Create module palette cards
+      modules.forEach(mod => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.setAttribute("data-preference", mod.id);
+        card.innerHTML = `
+          <img src="${mod.image || '/images/fallback.jpg'}" alt="${mod.title}" />
+          <div class="card-content">
+            <div class="card-title">${mod.title}</div>
+            <div class="card-description">${mod.description}</div>
+          </div>
+        `;
+
+        if (mod.needsInput && mod.inputType === "text") {
+          const input = document.createElement("input");
+          input.className = "card-input";
+          input.placeholder = mod.inputLabel;
+          card.querySelector(".card-content").appendChild(input);
         }
-      })
-      .then(res => res.json())
-      .then(user => document.getElementById("username").textContent = user.fullName);
 
-      const dropzone = document.getElementById("dropzone");
-      const modulePalette = document.getElementById("module-palette");
-      let draggedCard = null;
-
-      fetch("/api/modules")
-        .then(res => res.json())
-        .then(modules => {
-          modules.forEach(mod => {
-            const card = document.createElement("div");
-            card.className = "card";
-            card.setAttribute("data-preference", mod.ID);
-            card.innerHTML = `
-              <img src="${mod.Image}" alt="${mod.Title}" />
-              <div class="card-content">
-                <div class="card-title">${mod.Title}</div>
-                <div class="card-description">${mod.Description}</div>
-              </div>
-            `;
-
-            if (mod.NeedsInput && mod.InputType === "text") {
-              const input = document.createElement("input");
-              input.className = "card-input";
-              input.placeholder = mod.InputLabel;
-              card.querySelector(".card-content").appendChild(input);
-            }
-
-            if (mod.NeedsInput && mod.InputType === "select") {
-              const select = document.createElement("select");
-              select.className = "sports-dropdown";
-              select.innerHTML = `<option value="">${mod.InputLabel}</option>`;
-              mod.Options.forEach(opt => {
-                select.innerHTML += `<option value="${opt}">${opt}</option>`;
-              });
-              card.querySelector(".card-content").appendChild(select);
-            }
-
-            card.setAttribute("draggable", "true");
-            card.addEventListener("dragstart", () => {
-              if (mod.NeedsInput) {
-                if (mod.InputType === "text") {
-                  const val = card.querySelector(".card-input").value.trim();
-                  if (!val) return alert("Please enter value first.");
-                }
-                if (mod.InputType === "select") {
-                  const val = card.querySelector(".sports-dropdown").value;
-                  if (!val) return alert("Please select an option first.");
-                }
-              }
-              draggedCard = card;
-            });
-            card.addEventListener("dragend", () => draggedCard = null);
-
-            modulePalette.appendChild(card);
+        if (mod.needsInput && mod.inputType === "select") {
+          const select = document.createElement("select");
+          select.className = "card-select";
+          select.innerHTML = `<option value="">${mod.inputLabel}</option>`;
+          mod.options.forEach(opt => {
+            select.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
           });
-        });
-
-      dropzone.addEventListener("dragover", e => e.preventDefault());
-      dropzone.addEventListener("drop", e => {
-        e.preventDefault();
-        if (!draggedCard) return;
-
-        const clone = document.createElement("div");
-        const pref = draggedCard.dataset.preference;
-        clone.className = "dropzone-card";
-        clone.setAttribute("data-preference", pref);
-
-        const img = draggedCard.querySelector("img").cloneNode(true);
-        clone.appendChild(img);
-
-        const info = document.createElement("div");
-        info.className = "info";
-
-        const title = document.createElement("div");
-        title.className = "title";
-        title.textContent = draggedCard.querySelector(".card-title").textContent;
-
-        const detail = document.createElement("div");
-        detail.className = "detail";
-        const input = draggedCard.querySelector(".card-input");
-        const select = draggedCard.querySelector(".sports-dropdown");
-
-        if (input) {
-          detail.textContent = `City: ${input.value.trim()}`;
-          clone.setAttribute("data-extra", input.value.trim());
-        } else if (select) {
-          const val = select.value;
-          detail.textContent = `Option: ${val}`;
-          clone.setAttribute("data-extra", val);
-        } else {
-          detail.textContent = "No extra input";
-          clone.setAttribute("data-extra", "");
+          card.querySelector(".card-content").appendChild(select);
         }
 
-        info.appendChild(title);
-        info.appendChild(detail);
-        clone.appendChild(info);
-
-        const removeBtn = document.createElement("div");
-        removeBtn.className = "remove-btn";
-        removeBtn.textContent = "×";
-        removeBtn.onclick = () => {
-          clone.remove();
-          syncDashboard();
-        };
-        clone.appendChild(removeBtn);
-
-        clone.setAttribute("draggable", "true");
-        clone.addEventListener("dragstart", () => clone.classList.add("dragging"));
-        clone.addEventListener("dragend", () => {
-          clone.classList.remove("dragging");
-          syncDashboard();
+        card.setAttribute("draggable", "true");
+        card.addEventListener("dragstart", () => {
+          if (mod.needsInput) {
+            if (mod.inputType === "text") {
+              const val = card.querySelector(".card-input").value.trim();
+              if (!val) return alert("Please enter a value first.");
+            }
+            if (mod.inputType === "select") {
+              const val = card.querySelector(".card-select").value;
+              if (!val) return alert("Please select an option first.");
+            }
+          }
+          draggedCard = card;
         });
+        card.addEventListener("dragend", () => draggedCard = null);
 
-        dropzone.appendChild(clone);
-        syncDashboard();
+        modulePalette.appendChild(card);
       });
 
-      dropzone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        const dragging = dropzone.querySelector(".dragging");
-        const afterElement = [...dropzone.querySelectorAll(".dropzone-card:not(.dragging)")]
-          .reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = e.clientY - box.top - box.height / 2;
-            return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
-          }, { offset: Number.NEGATIVE_INFINITY }).element;
-        if (afterElement) {
-          dropzone.insertBefore(dragging, afterElement);
-        } else {
-          dropzone.appendChild(dragging);
-        }
-      });
+      // Restore user's previous module selection
+      if (userData.Preferences && userData.PreferenceVariables) {
+  userData.Preferences.forEach((modId, index) => {
+    const mod = moduleMap[modId];
+    if (!mod) return;
 
-      function syncDashboard() {
-        const modules = [...dropzone.querySelectorAll(".dropzone-card")];
-        const preferences = modules.map(m => m.dataset.preference);
-        const extraData = modules.map(m => m.dataset.extra || "");
+    const clone = document.createElement("div");
+    clone.className = "dropzone-card";
+    clone.setAttribute("data-preference", modId);
 
-        fetch("/api/preferences", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ preferences, extraData }),
-        });
+    const img = document.createElement("img");
+    img.src = mod.image || "/images/fallback.jpg";
+    img.alt = mod.title;
+    clone.appendChild(img);
+
+    const info = document.createElement("div");
+    info.className = "info";
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = mod.title;
+
+    const detail = document.createElement("div");
+    detail.className = "detail";
+    const extra = userData.PreferenceVariables[index] || "";
+
+    if (mod.needsInput) {
+      if (mod.inputType === "text") {
+        detail.textContent = `City: ${extra}`;
+      } else if (mod.inputType === "select") {
+        const label = mod.options.find(opt => opt.value === extra)?.label || extra;
+        detail.textContent = `Option: ${label}`;
       }
+    } else {
+      detail.textContent = "No extra input";
+    }
+
+    clone.setAttribute("data-extra", extra);
+    info.appendChild(title);
+    info.appendChild(detail);
+    clone.appendChild(info);
+
+    const removeBtn = document.createElement("div");
+    removeBtn.className = "remove-btn";
+    removeBtn.textContent = "×";
+    removeBtn.onclick = () => {
+      clone.remove();
+      syncDashboard();
+    };
+    clone.appendChild(removeBtn);
+
+    clone.setAttribute("draggable", "true");
+    clone.addEventListener("dragstart", () => clone.classList.add("dragging"));
+    clone.addEventListener("dragend", () => {
+      clone.classList.remove("dragging");
+      syncDashboard();
     });
-  </script>
+
+    dropzone.appendChild(clone);
+  });
+}
+
+
+      syncDashboard(); // trigger on load to make sure state is correct
+    });
+
+  dropzone.addEventListener("dragover", e => e.preventDefault());
+
+  dropzone.addEventListener("drop", e => {
+    e.preventDefault();
+    if (!draggedCard) return;
+
+    const clone = document.createElement("div");
+    const pref = draggedCard.dataset.preference;
+    const mod = moduleMap[pref];
+    if (!mod) return;
+
+    clone.className = "dropzone-card";
+    clone.setAttribute("data-preference", pref);
+
+    const img = draggedCard.querySelector("img").cloneNode(true);
+    clone.appendChild(img);
+
+    const info = document.createElement("div");
+    info.className = "info";
+
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = mod.title;
+
+    const detail = document.createElement("div");
+    detail.className = "detail";
+
+    let extra = "";
+    if (mod.needsInput) {
+      if (mod.inputType === "text") {
+        extra = draggedCard.querySelector(".card-input").value.trim();
+        detail.textContent = `City: ${extra}`;
+      } else if (mod.inputType === "select") {
+        const select = draggedCard.querySelector(".card-select");
+        extra = select.value;
+        const label = select.options[select.selectedIndex]?.text || extra;
+        detail.textContent = `Option: ${label}`;
+      }
+    } else {
+      detail.textContent = "No extra input";
+    }
+
+    clone.setAttribute("data-extra", extra);
+    info.appendChild(title);
+    info.appendChild(detail);
+    clone.appendChild(info);
+
+    const removeBtn = document.createElement("div");
+    removeBtn.className = "remove-btn";
+    removeBtn.textContent = "×";
+    removeBtn.onclick = () => {
+      clone.remove();
+      syncDashboard();
+    };
+    clone.appendChild(removeBtn);
+
+    clone.setAttribute("draggable", "true");
+    clone.addEventListener("dragstart", () => clone.classList.add("dragging"));
+    clone.addEventListener("dragend", () => {
+      clone.classList.remove("dragging");
+      syncDashboard();
+    });
+
+    dropzone.appendChild(clone);
+    syncDashboard();
+  });
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const dragging = dropzone.querySelector(".dragging");
+    const afterElement = [...dropzone.querySelectorAll(".dropzone-card:not(.dragging)")]
+      .reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = e.clientY - box.top - box.height / 2;
+        return offset < 0 && offset > closest.offset ? { offset, element: child } : closest;
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    if (afterElement) {
+      dropzone.insertBefore(dragging, afterElement);
+    } else {
+      dropzone.appendChild(dragging);
+    }
+  });
+
+  function syncDashboard() {
+    const modules = [...dropzone.querySelectorAll(".dropzone-card")];
+    const preferences = modules.map(m => m.dataset.preference);
+    const extraData = modules.map(m => m.dataset.extra || "");
+
+    fetch("/api/preferences", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ preferences, extraData }),
+    });
+  }
+});
+</script>
+
+
+
+
+
 </body>
 </html>

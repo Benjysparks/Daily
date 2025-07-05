@@ -248,7 +248,7 @@ func (cfg *apiConfig) scheduleUserEmail(email string, hour, minute int32) error 
 func main() {
 
 	const filepathRoot = "."
-	const port = "8000"
+	const port = "8080"
 
 	mux := http.NewServeMux()
 
@@ -287,7 +287,8 @@ func main() {
 	mux.HandleFunc("GET /api/showpreferences", apiCfg.handlerShowUserPreferences)
 	mux.HandleFunc("/api/userinfo", apiCfg.handlerGetUserByToken)
 	mux.HandleFunc("GET /api/clearuser", apiCfg.handlerClearUsers)
-	mux.HandleFunc("GET /api/modules", apiCfg.handleModules)
+	mux.HandleFunc("GET /api/modules", apiCfg.handleGetModulesMeta)
+	mux.HandleFunc("GET /api/moduledata", apiCfg.handlerGetModuleExtraData)
 
 	go func() {
 		log.Printf("Serving files from %s on port: %s\n", filepathRoot, port)
